@@ -1,9 +1,16 @@
 const mongoose = require("mongoose");
 
 const UserSchema = new mongoose.Schema({
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true, 
+  },
   userName: {
     type: String,
-    required: true,
+    required: function() {
+      return !this.googleId; 
+    },
     unique: true,
   },
   email: {
@@ -13,12 +20,15 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() {
+      return !this.googleId; 
+    },
   },
   role: {
     type: String,
     default: "user",
-  },
+  }
+  //profileImage: String, 
 });
 
 const User = mongoose.model("User", UserSchema);

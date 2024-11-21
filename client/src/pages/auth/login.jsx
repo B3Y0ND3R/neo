@@ -16,24 +16,21 @@ function AuthLogin() {
   const dispatch = useDispatch();
   const { toast } = useToast();
 
-
-  //function onSubmit(){}
   function onSubmit(event) {
     event.preventDefault();
-
     dispatch(loginUser(formData)).then((data) => {
       if (data?.payload?.success) {
-        toast({
-          title: data?.payload?.message,
-        });
+        toast({ title: data?.payload?.message });
       } else {
-        toast({
-          title: data?.payload?.message,
-          variant: "destructive",
-        });
+        toast({ title: data?.payload?.message, variant: "destructive" });
       }
     });
   }
+
+  function handleGoogleLogin() {
+    window.location.href = "http://localhost:5000/api/auth/google";
+  }
+  
 
   return (
     <div className="mx-auto w-full max-w-md space-y-6">
@@ -42,11 +39,8 @@ function AuthLogin() {
           Sign in to your account
         </h1>
         <p className="mt-2">
-          Don't have an account
-          <Link
-            className="font-medium ml-2 text-primary hover:underline"
-            to="/auth/register"
-          >
+          Don't have an account?
+          <Link className="font-medium ml-2 text-primary hover:underline" to="/auth/register">
             Register
           </Link>
         </p>
@@ -58,6 +52,15 @@ function AuthLogin() {
         setFormData={setFormData}
         onSubmit={onSubmit}
       />
+      <div className="text-center mt-4">
+        <p className="mb-2 text-gray-600">or</p>
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600"
+        >
+          Sign in with Google
+        </button>
+      </div>
     </div>
   );
 }

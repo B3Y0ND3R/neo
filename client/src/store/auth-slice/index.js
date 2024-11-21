@@ -55,6 +55,16 @@ export const logoutUser = createAsyncThunk(
   }
 );
 
+export const logoutGoogleUser = createAsyncThunk(
+  "/auth/google/logout",
+  async () => {
+    await axios.get("http://localhost:5000/api/auth/google/logout", {
+      withCredentials: true,
+    });
+  }
+);
+
+
 export const checkAuth = createAsyncThunk(
   "/auth/checkauth",
 

@@ -2,7 +2,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../../models/User");
 
-//register
 const registerUser = async (req, res) => {
   const { userName, email, password } = req.body;
 
@@ -35,7 +34,6 @@ const registerUser = async (req, res) => {
   }
 };
 
-//login
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
@@ -87,7 +85,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-// //logout
 
 const logoutUser = (req, res) => {
   res.clearCookie("token").json({
@@ -96,14 +93,18 @@ const logoutUser = (req, res) => {
   });
 };
 
-// //auth middleware
+
 const authMiddleware = async (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
   const token = req.cookies.token;
-  if (!token)
+  if (!token) {
     return res.status(401).json({
       success: false,
       message: "Unauthorised user!",
     });
+  }
 
   try {
     const decoded = jwt.verify(token, "CLIENT_SECRET_KEY");
