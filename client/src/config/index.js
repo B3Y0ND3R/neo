@@ -158,7 +158,7 @@ export const registerFormControls = [
     puma: "Puma",
     levi: "Levi",
     zara: "Zara",
-    "h&m": "H&M",
+    "h&m" : "H&M",
   };
   
   export const filterOptions = {
