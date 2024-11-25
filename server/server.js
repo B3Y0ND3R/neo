@@ -8,6 +8,7 @@ const authRouter = require("./routes/auth/auth-routes");
 require('./config/passport');
 const shopProductsRouter = require("./routes/shop/products-routes")
 const adminProductsRouter = require("./routes/admin/products-routes");
+const shopCartRouter = require("./routes/shop/cart-routes");
 
 mongoose.connect('mongodb+srv://ahsanulhasib2:hasib&abid@cluster0.gdn8u.mongodb.net/')
   .then(() => console.log('MongoDB connected'))
@@ -54,5 +55,6 @@ app.use(passport.session());
 app.use("/api/auth", authRouter);
 app.use("/api/admin/products", adminProductsRouter);
 app.use("/api/shop/products",shopProductsRouter);
+app.use("/api/shop/cart", shopCartRouter);
 
 app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));

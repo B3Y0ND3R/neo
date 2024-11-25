@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { sortOptions } from "@/config";
-//import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
+import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
 import {
   fetchAllFilteredProducts,
   fetchProductDetails,
@@ -42,7 +42,7 @@ function ShoppingListing() {
   const { productList, productDetails } = useSelector(
     (state) => state.shopProducts
   );
-  //const { cartItems } = useSelector((state) => state.shopCart);
+  const { cartItems } = useSelector((state) => state.shopCart);
   const { user } = useSelector((state) => state.auth);
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState(null);
