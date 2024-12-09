@@ -1,4 +1,4 @@
-import { Route, Routes, useNavigate } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import AuthLayout from "./components/auth/layout";
 import AuthLogin from "./pages/auth/login";
 import AuthRegister from "./pages/auth/register";
@@ -19,9 +19,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { useEffect } from "react";
 import { checkAuth } from "./store/auth-slice";
 import { Skeleton } from "@/components/ui/skeleton";
-import HashLoader from "react-spinners/HashLoader";
-import  HomePage  from "./pages/home/home"; 
-import HomeListing from "./pages/home/listing";
+import PaypalReturnPage from "./pages/shopping-view/paypal-return";
+import PaymentSuccessPage from "./pages/shopping-view/payment-success";
+import SearchProducts from "./pages/shopping-view/search";
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector(
@@ -33,24 +33,22 @@ function App() {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center w-screen h-screen bg-white">
-        <Skeleton className="w-20 h-20 bg-white flex items-center justify-center">
-          <HashLoader loading={isLoading} color="#000000" size={50} />
-        </Skeleton>
-      </div>
-    );
-  }
+  if (isLoading) return <Skeleton className="w-[800] bg-black h-[600px]" />;
+
   console.log(isLoading, user);
 
   return (
     <div className="flex flex-col overflow-hidden bg-white">
       <Routes>
-        <Route path="/" element={<HomePage />} /> 
-        <Route path="/listings" element={<HomeListing />} />
-        
-
+        <Route
+          path="/"
+          element={
+            <CheckAuth
+              isAuthenticated={isAuthenticated}
+              user={user}
+            ></CheckAuth>
+          }
+        />
         <Route
           path="/auth"
           element={
@@ -61,9 +59,7 @@ function App() {
         >
           <Route path="login" element={<AuthLogin />} />
           <Route path="register" element={<AuthRegister />} />
-
         </Route>
-
         <Route
           path="/admin"
           element={
@@ -73,11 +69,10 @@ function App() {
           }
         >
           <Route path="dashboard" element={<AdminDashboard />} />
-          <Route path="features" element={<AdminFeatures />} />
-          <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="features" element={<AdminFeatures />} />
         </Route>
-
         <Route
           path="/shop"
           element={
@@ -88,12 +83,14 @@ function App() {
         >
           <Route path="home" element={<ShoppingHome />} />
           <Route path="listing" element={<ShoppingListing />} />
-          <Route path="account" element={<ShoppingAccount />} />
           <Route path="checkout" element={<ShoppingCheckout />} />
+          <Route path="account" element={<ShoppingAccount />} />
+          <Route path="paypal-return" element={<PaypalReturnPage />} />
+          <Route path="payment-success" element={<PaymentSuccessPage />} />
+          <Route path="search" element={<SearchProducts />} />
         </Route>
-
-        <Route path="*" element={<NotFound />} />
         <Route path="/unauth-page" element={<UnauthPage />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   );
