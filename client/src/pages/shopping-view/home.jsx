@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import bannerOne from "../../assets/banner-1.webp";
-import bannerTwo from "../../assets/banner-2.webp";
-import bannerThree from "../../assets/banner-3.webp";
+//import bannerOne from "../../assets/banner-1.webp";
+//import bannerTwo from "../../assets/banner-2.webp";
+//import bannerThree from "../../assets/banner-3.webp";
 import {
   Airplay,
   BabyIcon,
@@ -52,8 +52,8 @@ function ShoppingHome() {
   const { productList, productDetails } = useSelector(
     (state) => state.shopProducts
   );
-  //const { featureImageList } = useSelector((state) => state.commonFeature);
-  const slides =[bannerOne, bannerThree];
+  const { featureImageList } = useSelector((state) => state.commonFeature);
+  //const slides =[bannerOne, bannerThree];
 
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
 
@@ -98,20 +98,20 @@ function ShoppingHome() {
     if (productDetails !== null) setOpenDetailsDialog(true);
   }, [productDetails]);
 
-//   useEffect(() => {
-//     const timer = setInterval(() => {
-//       setCurrentSlide((prevSlide) => (prevSlide + 1) % featureImageList.length);
-//     }, 15000);
-
-//     return () => clearInterval(timer);
-//   }, [featureImageList]);
-useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prevSlide) => (prevSlide + 1) % slides.length);
-    }, 5000);
+   useEffect(() => {
+     const timer = setInterval(() => {
+       setCurrentSlide((prevSlide) => (prevSlide + 1) % featureImageList.length);
+     }, 15000);
 
     return () => clearInterval(timer);
-  }, []);
+   }, [featureImageList]);
+// useEffect(() => {
+//     const timer = setInterval(() => {
+//       setCurrentSlide((prevSlide) => (prevSlide + 1) % slides.length);
+//     }, 5000);
+
+//     return () => clearInterval(timer);
+//   }, []);
 
   useEffect(() => {
     dispatch(
@@ -131,7 +131,7 @@ useEffect(() => {
   return (
     <div className="flex flex-col min-h-screen">
       <div className="relative w-full h-[600px] overflow-hidden">
-        {/* {featureImageList && featureImageList.length > 0
+        {featureImageList && featureImageList.length > 0
           ? featureImageList.map((slide, index) => (
               <img
                 src={slide?.image}
@@ -141,8 +141,8 @@ useEffect(() => {
                 } absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000`}
               />
             ))
-          : null} */}
-          { slides.map((slide, index) => (
+          : null} 
+          {/* { slides.map((slide, index) => (
               <img
                 src={slide}
                 key={index}
@@ -151,7 +151,7 @@ useEffect(() => {
                 } absolute top-0 left-0 w-full h-full object-cover transition-opacity duration-1000`}
               />
           ))
-          }
+          } */}
 
         <Button
           variant="outline"
@@ -159,8 +159,9 @@ useEffect(() => {
           onClick={() =>
             setCurrentSlide(
               (prevSlide) =>
-                (prevSlide - 1 + slides.length) %
-                slides.length
+                (prevSlide - 1 + featureImageList.length) %
+                featureImageList.length
+
             )
           }
           className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white/80"
@@ -172,7 +173,7 @@ useEffect(() => {
           size="icon"
           onClick={() =>
             setCurrentSlide(
-              (prevSlide) => (prevSlide + 1) % slides.length
+              (prevSlide) => (prevSlide + 1) % featureImageList.length
             )
           }
           className="absolute top-1/2 right-4 transform -translate-y-1/2 bg-white/80"

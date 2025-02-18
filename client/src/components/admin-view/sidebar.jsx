@@ -3,6 +3,7 @@ import {
     ChartNoAxesCombined,
     LayoutDashboard,
     ShoppingBasket,
+    MessageCircle,
   } from "lucide-react";
   import { Fragment } from "react";
   import { useNavigate } from "react-router-dom";
@@ -26,6 +27,12 @@ import {
       label: "Orders",
       path: "/admin/orders",
       icon: <BadgeCheck />,
+    },
+    {
+      id: "chats",
+      label: "Chats",
+      path: "/admin/chats",
+      icon: <MessageCircle />,
     },
   ];
   

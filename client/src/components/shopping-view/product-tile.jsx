@@ -2,12 +2,27 @@ import { Card, CardContent, CardFooter } from "../ui/card";
 import { Button } from "../ui/button";
 import { brandOptionsMap, categoryOptionsMap } from "@/config";
 import { Badge } from "../ui/badge";
+import { useNavigate } from "react-router-dom";
 
 function ShoppingProductTile({
   product,
   handleGetProductDetails,
   handleAddtoCart,
 }) {
+  const navigate = useNavigate();
+
+  const handleTryOn = (e) => {
+    e.stopPropagation(); // Prevent triggering product details click
+    navigate('/virtual-try-on', { 
+      state: { 
+        garmentImage: product?.image,
+        category: product?.category.toLowerCase(), // Convert to lowercase to match API requirements
+        productId: product?._id,
+        productTitle: product?.title
+      } 
+    });
+  };
+
   return (
     <Card className="w-full max-w-sm mx-auto">
       <div onClick={() => handleGetProductDetails(product?._id)}>
@@ -46,7 +61,8 @@ function ShoppingProductTile({
               className={`${
                 product?.salePrice > 0 ? "line-through" : ""
               } text-lg font-semibold text-primary`}>
-              ${product?.price}</span>
+              ${product?.price}
+            </span>
             
             {product?.salePrice > 0 ? (
               <span className="text-lg font-semibold text-primary">
@@ -56,20 +72,30 @@ function ShoppingProductTile({
           </div>
         </CardContent>
       
-      <CardFooter>
-        {product?.totalStock === 0 ? (
-          <Button className="w-full opacity-60 cursor-not-allowed">
-           Add to cart
-          </Button>
-        ) : (
-          <Button
-            onClick={() => handleAddtoCart(product?._id, product?.totalStock)}
+        <CardFooter className="flex flex-col gap-2 w-full">
+          {product?.totalStock === 0 ? (
+            <Button className="w-full opacity-60 cursor-not-allowed">
+              Add to cart
+            </Button>
+          ) : (
+            <Button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAddtoCart(product?._id, product?.totalStock);
+              }}
+              className="w-full"
+            >
+              Add to cart
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
             className="w-full"
+            onClick={handleTryOn}
           >
-            Add to cart
+            Virtual Try On
           </Button>
-        )}
-      </CardFooter>
+        </CardFooter>
       </div>
     </Card>
   );

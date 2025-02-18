@@ -15,7 +15,9 @@ const adminOrderRouter = require("./routes/admin/order-routes");
 const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
 const commonFeatureRouter = require("./routes/common/feature-routes");
-
+const chatRouter = require("./routes/chat/chat-routes");
+const http = require('http');
+const { Server } = require('socket.io');
 
 mongoose.connect('mongodb+srv://ahsanulhasib2:hasib&abid@cluster0.gdn8u.mongodb.net/')
   .then(() => console.log('MongoDB connected'))
@@ -23,6 +25,17 @@ mongoose.connect('mongodb+srv://ahsanulhasib2:hasib&abid@cluster0.gdn8u.mongodb.
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
@@ -40,7 +53,6 @@ app.use(
 );
 
 app.use(cookieParser());
-app.use(express.json());
 
 app.use(
   session({
@@ -55,9 +67,45 @@ app.use(
   })
 );
 
-
 app.use(passport.initialize());
 app.use(passport.session());
+
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('join_chat', (room) => {
+    socket.join(room);
+    console.log(`User joined room: ${room}`);
+  });
+
+  socket.on('leave_chat', (room) => {
+    socket.leave(room);
+    console.log(`User left room: ${room}`);
+  });
+
+  socket.on('send_message', async (data) => {
+    try {
+      console.log('Received message data:', data);
+      // Emit the message to the specific room
+      io.to(data.room).emit('receive_message', {
+        sender: data.sender,
+        senderRole: data.senderRole,
+        content: data.content,
+        timestamp: data.timestamp
+      });
+    } catch (error) {
+      console.error('Error handling message:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Add chat routes
+app.use("/api/chat", chatRouter);
+
 app.use("/api/admin/orders", adminOrderRouter);
 
 app.use("/api/auth", authRouter);
@@ -70,4 +118,4 @@ app.use("/api/shop/search", shopSearchRouter);
 app.use("/api/shop/review", shopReviewRouter);
 app.use("/api/common/feature", commonFeatureRouter);
 
-app.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));

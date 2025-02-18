@@ -22,6 +22,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import PaypalReturnPage from "./pages/shopping-view/paypal-return";
 import PaymentSuccessPage from "./pages/shopping-view/payment-success";
 import SearchProducts from "./pages/shopping-view/search";
+import HashLoader from "react-spinners/HashLoader";
+import  HomePage  from "./pages/home/home"; 
+import HomeListing from "./pages/home/listing";
+import TryOnPage from './pages/TryOnPage';
+import ShoppingChat from "./pages/shopping-view/chat";
+import AdminChats from "./pages/admin-view/chats";
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector(
@@ -33,22 +39,22 @@ function App() {
     dispatch(checkAuth());
   }, [dispatch]);
 
-  if (isLoading) return <Skeleton className="w-[800] bg-black h-[600px]" />;
-
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center w-screen h-screen bg-white">
+        <Skeleton className="w-20 h-20 bg-white flex items-center justify-center">
+          <HashLoader loading={isLoading} color="#000000" size={50} />
+        </Skeleton>
+      </div>
+    );
+  }
   console.log(isLoading, user);
 
   return (
     <div className="flex flex-col overflow-hidden bg-white">
       <Routes>
-        <Route
-          path="/"
-          element={
-            <CheckAuth
-              isAuthenticated={isAuthenticated}
-              user={user}
-            ></CheckAuth>
-          }
-        />
+      <Route path="/" element={<HomePage />} /> 
+      <Route path="/listings" element={<HomeListing />} />
         <Route
           path="/auth"
           element={
@@ -72,6 +78,7 @@ function App() {
           <Route path="products" element={<AdminProducts />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="features" element={<AdminFeatures />} />
+          <Route path="chats" element={<AdminChats />} />
         </Route>
         <Route
           path="/shop"
@@ -88,9 +95,11 @@ function App() {
           <Route path="paypal-return" element={<PaypalReturnPage />} />
           <Route path="payment-success" element={<PaymentSuccessPage />} />
           <Route path="search" element={<SearchProducts />} />
+          <Route path="chat" element={<ShoppingChat />} />
         </Route>
         <Route path="/unauth-page" element={<UnauthPage />} />
         <Route path="*" element={<NotFound />} />
+        <Route path="/virtual-try-on" element={<TryOnPage />} />
       </Routes>
     </div>
   );

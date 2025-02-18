@@ -12,11 +12,11 @@ import {
 } from "../ui/table";
 import ShoppingOrderDetailsView from "./order-details";
 import { useDispatch, useSelector } from "react-redux";
-//import {
- // getAllOrdersByUserId,
-  //getOrderDetails,
-  //resetOrderDetails,
-//} from "@/store/shop/order-slice";
+import {
+ getAllOrdersByUserId,
+  getOrderDetails,
+  resetOrderDetails,
+} from "@/store/shop/order-slice";
 import { Badge } from "../ui/badge";
 
 function ShoppingOrders() {
