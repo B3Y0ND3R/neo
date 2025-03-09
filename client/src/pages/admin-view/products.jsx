@@ -54,38 +54,49 @@ function AdminProducts() {
   function onSubmit(event) {
     event.preventDefault();
 
-    currentEditedId !== null
-      ? dispatch(
-          editProduct({
-            id: currentEditedId,
-            formData,
-          })
-        ).then((data) => {
-          console.log(data, "edit");
+    if (currentEditedId !== null) {
+      // Editing existing product
+      const updatedFormData = {
+        ...formData,
+        image: uploadedImageUrl || formData.image // Use new image if uploaded, else keep existing
+      };
 
-          if (data?.payload?.success) {
-            dispatch(fetchAllProducts());
-            setFormData(initialFormData);
-            setOpenCreateProductsDialog(false);
-            setCurrentEditedId(null);
-          }
+      dispatch(
+        editProduct({
+          id: currentEditedId,
+          formData: updatedFormData,
         })
-      : dispatch(
-          addNewProduct({
-            ...formData,
-            image: uploadedImageUrl,
-          })
-        ).then((data) => {
-          if (data?.payload?.success) {
-            dispatch(fetchAllProducts());
-            setOpenCreateProductsDialog(false);
-            setImageFile(null);
-            setFormData(initialFormData);
-            toast({
-              title: "Product added successfully",
-            });
-          }
-        });
+      ).then((data) => {
+        if (data?.payload?.success) {
+          dispatch(fetchAllProducts());
+          setFormData(initialFormData);
+          setOpenCreateProductsDialog(false);
+          setCurrentEditedId(null);
+          setImageFile(null);
+          setUploadedImageUrl("");
+          toast({
+            title: "Product updated successfully",
+          });
+        }
+      });
+    } else {
+      dispatch(
+        addNewProduct({
+          ...formData,
+          image: uploadedImageUrl,
+        })
+      ).then((data) => {
+        if (data?.payload?.success) {
+          dispatch(fetchAllProducts());
+          setOpenCreateProductsDialog(false);
+          setImageFile(null);
+          setFormData(initialFormData);
+          toast({
+            title: "Product added successfully",
+          });
+        }
+      });
+    }
   }
 
   function handleDelete(getCurrentProductId) {
@@ -97,34 +108,25 @@ function AdminProducts() {
   }
 
   function isFormValid() {
-    return formData.title &&
-      formData.description &&
-      formData.category &&
-      formData.brand &&
-      formData.price &&
-      formData.salePrice &&
-      formData.totalStock;
-  }
-
-  // Alternative more verbose version for debugging:
-  function isFormValid() {
-    console.log('Form Data:', formData); // Add this to debug
-    const requiredFields = [
-      'title',
-      'description',
-      'category',
-      'brand',
-      'price',
-      'salePrice',
-      'totalStock'
-    ];
-    
-    const valid = requiredFields.every(field => Boolean(formData[field]));
-    console.log('Form Valid:', valid); // Add this to debug
-    return valid;
+    return Object.keys(formData)
+      .filter((currentKey) => currentKey !== "averageReview")
+      .map((key) => formData[key] !== "")
+      .every((item) => item);
   }
 
   const formElements = getProductFormElements(brandList);
+
+  const handleEdit = (productItem) => {
+    setFormData({
+      ...productItem,
+      category: productItem.category,
+      brand: productItem.brand,
+    });
+    setCurrentEditedId(productItem._id);
+    setUploadedImageUrl(""); // Reset uploaded image URL
+    setImageFile(null); // Reset image file
+    setOpenCreateProductsDialog(true);
+  };
 
   return (
     <Fragment>
@@ -143,6 +145,7 @@ function AdminProducts() {
                 setCurrentEditedId={setCurrentEditedId}
                 product={productItem}
                 handleDelete={handleDelete}
+                handleEdit={handleEdit}
               />
             ))
           : null}

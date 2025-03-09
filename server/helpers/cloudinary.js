@@ -7,16 +7,31 @@ cloudinary.config({
   api_secret: "c-TAmvTzsHpX5wQIeAQ1zYl-RE8",
 });
 
-const storage = new multer.memoryStorage();
+const storage = multer.memoryStorage();
 
-async function imageUploadUtil(file) {
-  const result = await cloudinary.uploader.upload(file, {
-    resource_type: "auto",
-  });
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  }
+});
 
-  return result;
-}
+const imageUploadUtil = async (dataURI) => {
+  try {
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: 'products',
+      resource_type: 'auto',
+      overwrite: true
+    });
+    return result;
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    throw error;
+  }
+};
 
-const upload = multer({ storage });
-
-module.exports = { upload, imageUploadUtil };
+module.exports = {
+  upload,
+  imageUploadUtil,
+  cloudinary
+};
