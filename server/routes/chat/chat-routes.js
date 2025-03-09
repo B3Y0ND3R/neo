@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const Chat = require('../../models/Chat');
 const User = require('../../models/User');
+const { upload, cloudinary } = require('../../helpers/cloudinary');
+
 
 // Get all conversations (for admin)
 router.get('/conversations', async (req, res) => {
@@ -113,6 +115,79 @@ router.put('/:userId/read', async (req, res) => {
     }
   } catch (error) {
     console.error('Error marking messages as read:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Delete a specific message
+router.delete('/:userId/messages/:messageId', async (req, res) => {
+  try {
+    const { userId, messageId } = req.params;
+    const chat = await Chat.findOne({ user: userId });
+    
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    chat.messages = chat.messages.filter(
+      message => message._id.toString() !== messageId
+    );
+    
+    await chat.save();
+    res.json({ success: true, message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Add image message
+router.post('/:userId/messages/image', upload.single('image'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { sender, senderRole } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    const b64 = Buffer.from(req.file.buffer).toString("base64");
+    const dataURI = "data:" + req.file.mimetype + ";base64," + b64;
+
+    const result = await cloudinary.uploader.upload(dataURI, {
+      folder: 'chat_images',
+      resource_type: 'auto'
+    });
+
+    let chat = await Chat.findOne({ user: userId });
+    
+    if (!chat) {
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      chat = new Chat({
+        user: userId,
+        userName: user.userName,
+        messages: []
+      });
+    }
+    const newMessage = {
+      sender,
+      senderRole,
+      content: result.secure_url,
+      messageType: 'image',
+      timestamp: new Date()
+    };
+
+    chat.messages.push(newMessage);
+    chat.lastMessage = new Date();
+    chat.unreadCount = senderRole === 'user' ? chat.unreadCount + 1 : 0;
+    
+    await chat.save();
+    res.json(chat);
+  } catch (error) {
+    console.error('Error uploading image:', error);
     res.status(500).json({ message: error.message });
   }
 });

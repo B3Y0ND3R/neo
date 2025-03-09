@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import io from 'socket.io-client';
-import { Send, ArrowLeft, MoreVertical } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Image, Trash2 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ function ChatWindow({ selectedUserId }) {
   const messagesEndRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const messageAddedRef = useRef(false);
+  const fileInputRef = useRef(null);
 
   console.log('Current user:', user); // Debug user data
   console.log('Selected user ID:', selectedUserId); // Debug selected user
@@ -69,8 +70,14 @@ function ChatWindow({ selectedUserId }) {
       messageAddedRef.current = false;
     });
 
+    socket.on('delete_message', (data) => {
+      console.log('Message deleted:', data);
+      setMessages(prev => prev.filter(msg => msg._id !== data.messageId));
+    });
+
     return () => {
       socket.off('receive_message');
+      socket.off('delete_message');
       if (chatRoom) {
         socket.emit('leave_chat', chatRoom);
       }
@@ -136,6 +143,57 @@ function ChatWindow({ selectedUserId }) {
     }
   };
 
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      const chatId = user.role === 'admin' ? selectedUserId : user.id;
+      const response = await fetch(
+        `http://localhost:5000/api/chat/${chatId}/messages/${messageId}`,
+        {
+          method: 'DELETE',
+          credentials: 'include'
+        }
+      );
+  
+      if (response.ok) {
+        setMessages(messages.filter(msg => msg._id !== messageId));
+      }
+    } catch (error) {
+      console.error('Error deleting message:', error);
+    }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+  
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('sender', user.id);
+    formData.append('senderRole', user.role);
+  
+    try {
+      const chatId = user.role === 'admin' ? selectedUserId : user.id;
+      const response = await fetch(
+        `http://localhost:5000/api/chat/${chatId}/messages/image`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          body: formData
+        }
+      );
+  
+      const data = await response.json();
+      if (response.ok) {
+        const newMessage = data.messages[data.messages.length - 1];
+        messageAddedRef.current = true;
+        socket.emit('send_message', newMessage);
+        setMessages(prev => [...prev, newMessage]);
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+    }
+  };
+
   // Determine if this is the admin view
   const isAdminView = user.role === 'admin';
 
@@ -191,7 +249,7 @@ function ChatWindow({ selectedUserId }) {
               return (
                 <div
                   key={index}
-                  className={`flex items-start gap-2 ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
+                  className={`flex items-start gap-2 group ${isCurrentUser ? 'justify-end' : 'justify-start'}`}
                 >
                   {!isCurrentUser && showAvatar && (
                     <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-sm font-medium">
@@ -199,19 +257,37 @@ function ChatWindow({ selectedUserId }) {
                     </div>
                   )}
                   <div
-                    className={`max-w-[70%] rounded-lg p-3 ${
+                    className={`max-w-[70%] rounded-lg p-3 relative ${
                       isCurrentUser
                         ? 'bg-primary text-white rounded-br-none'
                         : 'bg-white shadow-sm rounded-bl-none'
                     }`}
                   >
-                    <p className="text-sm">{msg.content}</p>
+                    {msg.messageType === 'image' ? (
+                      <img 
+                        src={msg.content} 
+                        alt="Chat image" 
+                        className="rounded max-w-full h-auto"
+                      />
+                    ) : (
+                      <p className="text-sm">{msg.content}</p>
+                    )}
                     <p className={`text-xs mt-1 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
                     </p>
+                    {isCurrentUser && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleDeleteMessage(msg._id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               );
@@ -236,6 +312,22 @@ function ChatWindow({ selectedUserId }) {
               className="flex-1 p-2 border rounded-full bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
               placeholder="Type your message..."
             />
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleImageUpload}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="rounded-full"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Image className="h-5 w-5" />
+            </Button>
             <Button type="submit" size="icon" className="rounded-full">
               <Send className="h-5 w-5" />
             </Button>
