@@ -4,12 +4,16 @@ import { Badge } from "@/components/ui/badge";
 import { useSelector } from 'react-redux';
 import { Search, MessageCircle } from 'lucide-react';
 import { Input } from "@/components/ui/input";
+import { useLocation } from 'react-router-dom';
+import axios from 'axios';
 
-function AdminChats() {
+const AdminChats = () => {
+  const location = useLocation();
   const [conversations, setConversations] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const { user } = useSelector((state) => state.auth);
+  const [users, setUsers] = useState([]);
 
   const fetchConversations = async () => {
     try {
@@ -32,6 +36,44 @@ function AdminChats() {
       return () => clearInterval(interval);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (location.state?.selectedUser) {
+      console.log('Selected user from contact:', location.state.selectedUser);
+      setSelectedUser(location.state.selectedUser);
+      
+      if (location.state.selectedUser.id) {
+        fetchChatHistory(location.state.selectedUser.id);
+      }
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/chat/users', {
+        withCredentials: true
+      });
+      setUsers(response.data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const fetchChatHistory = async (userId) => {
+    try {
+      const response = await axios.get(`http://localhost:5000/api/chat/history/${userId}`, {
+        withCredentials: true
+      });
+      // Handle chat history
+      setChatHistory(response.data);
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+    }
+  };
 
   const handleSelectUser = async (userId) => {
     console.log('Selected user ID:', userId); // Debug log
@@ -139,6 +181,6 @@ function AdminChats() {
       </div>
     </div>
   );
-}
+};
 
 export default AdminChats; 

@@ -30,6 +30,12 @@ import ShoppingChat from "./pages/shopping-view/chat";
 import AdminChats from "./pages/admin-view/chats";
 import AdminBrands from "./pages/admin-view/brands";
 import { Toaster } from "@/components/ui/toaster";
+import AboutUs from "./pages/about-us";
+import AdminAboutUs from "./pages/admin-view/about-us";
+import FAQ from './pages/faq';
+import FaqAdmin from './pages/admin-view/faq';
+import Contact from './pages/contact';
+import ContactQueries from './pages/admin-view/contact-queries';
 
 function App() {
   const { user, isAuthenticated, isLoading } = useSelector(
@@ -83,6 +89,9 @@ function App() {
           <Route path="features" element={<AdminFeatures />} />
           <Route path="chats" element={<AdminChats />} />
           <Route path="brands" element={<AdminBrands />} />
+          <Route path="about-us" element={<AdminAboutUs />} />
+          <Route path="faq" element={<FaqAdmin />} />
+          <Route path="contact-queries" element={<ContactQueries />} />
         </Route>
         <Route
           path="/shop"
@@ -104,6 +113,9 @@ function App() {
         <Route path="/unauth-page" element={<UnauthPage />} />
         <Route path="*" element={<NotFound />} />
         <Route path="/virtual-try-on" element={<TryOnPage />} />
+        <Route path="/about" element={<AboutUs />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/contact" element={<Contact />} />
       </Routes>
     </div>
   );

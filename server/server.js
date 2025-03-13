@@ -19,6 +19,9 @@ const chatRouter = require("./routes/chat/chat-routes");
 const http = require('http');
 const { Server } = require('socket.io');
 const adminBrandsRouter = require("./routes/admin/brands-routes");
+const aboutUsRouter = require("./routes/aboutUs");
+const faqRouter = require("./routes/faq");
+const contactRouter = require("./routes/contact");
 
 mongoose.connect('mongodb+srv://ahsanulhasib2:hasib&abid@cluster0.gdn8u.mongodb.net/')
   .then(() => console.log('MongoDB connected'))
@@ -119,5 +122,7 @@ app.use("/api/shop/search", shopSearchRouter);
 app.use("/api/shop/review", shopReviewRouter);
 app.use("/api/common/feature", commonFeatureRouter);
 app.use("/api/admin/brands", adminBrandsRouter);
-
+app.use("/api/about-us", aboutUsRouter);
+app.use("/api/faq", faqRouter);
+app.use("/api/contact", contactRouter);
 server.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));

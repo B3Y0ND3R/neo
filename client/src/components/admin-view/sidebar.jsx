@@ -5,6 +5,9 @@ import {
     ShoppingBasket,
     MessageCircle,
     Building2,
+    FileText,
+    HelpCircle,
+    Mail,
   } from "lucide-react";
   import { Fragment } from "react";
   import { useNavigate } from "react-router-dom";
@@ -40,6 +43,24 @@ import {
       label: "Chats",
       path: "/admin/chats",
       icon: <MessageCircle />,
+    },
+    {
+      id: "about-us",
+      label: "About Us",
+      path: "/admin/about-us",
+      icon: <FileText />,
+    },
+    {
+      id: "faq",
+      label: "FAQ",
+      path: "/admin/faq",
+      icon: <HelpCircle />,
+    },
+    {
+      id: "contact-queries",
+      label: "Contact Queries",
+      path: "/admin/contact-queries",
+      icon: <Mail />,
     },
   ];
   

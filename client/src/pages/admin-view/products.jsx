@@ -19,6 +19,8 @@ import {
 import { fetchAllBrands } from "@/store/admin/brands-slice";
 import { Fragment, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import ProductDetailsDialog from "@/components/shopping-view/product-details";
+import { fetchProductDetails } from "@/store/shop/products-slice";
 
 const initialFormData = {
   image: null,
@@ -40,8 +42,10 @@ function AdminProducts() {
   const [uploadedImageUrl, setUploadedImageUrl] = useState("");
   const [imageLoadingState, setImageLoadingState] = useState(false);
   const [currentEditedId, setCurrentEditedId] = useState(null);
+  const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
 
   const { productList } = useSelector((state) => state.adminProducts);
+  const { productDetails } = useSelector((state) => state.shopProducts);
   const { brandList } = useSelector((state) => state.adminBrands);
   const dispatch = useDispatch();
   const { toast } = useToast();
@@ -128,6 +132,11 @@ function AdminProducts() {
     setOpenCreateProductsDialog(true);
   };
 
+  function handleGetProductDetails(getCurrentProductId) {
+    dispatch(fetchProductDetails(getCurrentProductId));
+    setOpenDetailsDialog(true);
+  }
+
   return (
     <Fragment>
       <div className="mb-5 w-full flex justify-end">
@@ -146,10 +155,17 @@ function AdminProducts() {
                 product={productItem}
                 handleDelete={handleDelete}
                 handleEdit={handleEdit}
+                handleGetProductDetails={handleGetProductDetails}
               />
             ))
           : null}
       </div>
+      <ProductDetailsDialog
+        open={openDetailsDialog}
+        setOpen={setOpenDetailsDialog}
+        productDetails={productDetails}
+        isAdmin={true}
+      />
       <Sheet
         open={openCreateProductsDialog}
         onOpenChange={() => {

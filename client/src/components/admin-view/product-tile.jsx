@@ -1,12 +1,14 @@
 import { Button } from "../ui/button";
 import { Card, CardContent, CardFooter } from "../ui/card";
 
-function AdminProductTile({
+export default function AdminProductTile({
   product,
   setFormData,
   setOpenCreateProductsDialog,
   setCurrentEditedId,
   handleDelete,
+  handleEdit,
+  handleGetProductDetails,
 }) {
   return (
     <Card className="w-full max-w-sm mx-auto">
@@ -15,7 +17,8 @@ function AdminProductTile({
           <img
             src={product?.image}
             alt={product?.title}
-            className="w-full h-[300px] object-cover rounded-t-lg"
+            className="w-full h-[300px] object-cover rounded-t-lg cursor-pointer"
+            onClick={() => handleGetProductDetails(product._id)}
           />
         </div>
         <CardContent>
@@ -49,5 +52,3 @@ function AdminProductTile({
     </Card>
   );
 }
-
-export default AdminProductTile;

@@ -1,16 +1,29 @@
 const Order = require("../../models/Order");
 const Product = require("../../models/Product");
 const ProductReview = require("../../models/Review");
+const { imageUploadUtil } = require("../../helpers/cloudinary");
+const jwt = require("jsonwebtoken");
 
 const addProductReview = async (req, res) => {
   try {
-    const { productId, userId, userName, reviewMessage, reviewValue } =
-      req.body;
+    const { productId, userId, userName, reviewMessage, reviewValue } = req.body;
+    let reviewImages = [];
+
+    // Handle image uploads if present
+    if (req.files && req.files.length > 0) {
+      // Upload each image to cloudinary
+      const uploadPromises = req.files.map(file => {
+        const dataURI = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+        return imageUploadUtil(dataURI);
+      });
+      
+      const uploadResults = await Promise.all(uploadPromises);
+      reviewImages = uploadResults.map(result => result.url);
+    }
 
     const order = await Order.findOne({
       userId,
       "cartItems.productId": productId,
-      // orderStatus: "confirmed" || "delivered",
     });
 
     if (!order) {
@@ -20,12 +33,12 @@ const addProductReview = async (req, res) => {
       });
     }
 
-    const checkExistinfReview = await ProductReview.findOne({
+    const checkExistingReview = await ProductReview.findOne({
       productId,
       userId,
     });
 
-    if (checkExistinfReview) {
+    if (checkExistingReview) {
       return res.status(400).json({
         success: false,
         message: "You already reviewed this product!",
@@ -38,6 +51,7 @@ const addProductReview = async (req, res) => {
       userName,
       reviewMessage,
       reviewValue,
+      reviewImages,
     });
 
     await newReview.save();
@@ -59,6 +73,7 @@ const addProductReview = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Error",
+      error: e.message,
     });
   }
 };
@@ -81,4 +96,48 @@ const getProductReviews = async (req, res) => {
   }
 };
 
-module.exports = { addProductReview, getProductReviews };
+const deleteProductReview = async (req, res) => {
+  try {
+    const { productId, reviewId } = req.params;
+
+    // First find and delete the review
+    const review = await ProductReview.findByIdAndDelete(reviewId);
+    if (!review) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Review not found" 
+      });
+    }
+
+    // Update product's average review
+    const reviews = await ProductReview.find({ productId });
+    const totalReviewsLength = reviews.length;
+    
+    let averageReview = 0;
+    if (totalReviewsLength > 0) {
+      averageReview = reviews.reduce((sum, review) => sum + review.reviewValue, 0) / totalReviewsLength;
+    }
+
+    await Product.findByIdAndUpdate(productId, { averageReview });
+
+    res.status(200).json({
+      success: true,
+      message: "Review deleted successfully",
+      reviewId: reviewId
+    });
+
+  } catch (error) {
+    console.error("Error in deleteProductReview:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error deleting review",
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  addProductReview,
+  getProductReviews,
+  deleteProductReview
+};

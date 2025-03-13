@@ -11,26 +11,51 @@ import { setProductDetails } from "@/store/shop/products-slice";
 import { Label } from "../ui/label";
 import StarRatingComponent from "../common/star-rating";
 import { useEffect, useState } from "react";
-import { addReview, getReviews } from "@/store/shop/review-slice";
+import { addReview, getReviews, deleteReview } from "@/store/shop/review-slice";
+import ReviewImageUpload from "../shop/review-image-upload";
+import { adminDeleteReview } from "@/store/admin/review-slice";
+import { fetchAllProducts } from "@/store/admin/products-slice";
 
-function ProductDetailsDialog({ open, setOpen, productDetails }) {
-  const [reviewMsg, setReviewMsg] = useState("");
+function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
   const [rating, setRating] = useState(0);
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
-  const { cartItems } = useSelector((state) => state.shopCart);
-  const { reviews } = useSelector((state) => state.shopReview);
-
+  const reviews = useSelector((state) => state.shopReview.reviews);
   const { toast } = useToast();
 
-  function handleRatingChange(getRating) {
-    console.log(getRating, "getRating");
+  useEffect(() => {
+    if (productDetails?._id) {
+      dispatch(getReviews(productDetails._id));
+    }
+  }, [dispatch, productDetails]);
 
-    setRating(getRating);
-  }
+  const handleRatingChange = (newRating) => {
+    setRating(newRating);
+  };
 
-  function handleAddToCart(getCurrentProductId, getTotalStock) {
-    let getCartItems = cartItems.items || [];
+  const handleSubmitReview = ({ reviewMessage, reviewImages }) => {
+    dispatch(
+      addReview({
+        productId: productDetails?._id,
+        userId: user?.id,
+        userName: user?.userName,
+        reviewMessage,
+        reviewValue: rating,
+        reviewImages,
+      })
+    ).then((data) => {
+      if (data.payload.success) {
+        setRating(0);
+        dispatch(getReviews(productDetails?._id));
+        toast({
+          title: "Review added successfully!",
+        });
+      }
+    });
+  };
+
+  const handleAddToCart = (getCurrentProductId, getTotalStock) => {
+    let getCartItems = reviews.items || [];
 
     if (getCartItems.length) {
       const indexOfCurrentItem = getCartItems.findIndex(
@@ -62,47 +87,58 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
         });
       }
     });
-  }
+  };
 
-  function handleDialogClose() {
+  const handleDialogClose = () => {
     setOpen(false);
     dispatch(setProductDetails());
     setRating(0);
-    setReviewMsg("");
-  }
-
-  function handleAddReview() {
-    dispatch(
-      addReview({
-        productId: productDetails?._id,
-        userId: user?.id,
-        userName: user?.userName,
-        reviewMessage: reviewMsg,
-        reviewValue: rating,
-      })
-    ).then((data) => {
-      if (data.payload.success) {
-        setRating(0);
-        setReviewMsg("");
-        dispatch(getReviews(productDetails?._id));
-        toast({
-          title: "Review added successfully!",
-        });
-      }
-    });
-  }
-
-  useEffect(() => {
-    if (productDetails !== null) dispatch(getReviews(productDetails?._id));
-  }, [productDetails]);
-
-  console.log(reviews, "reviews");
+    dispatch(getReviews(productDetails?._id));
+  };
 
   const averageReview =
     reviews && reviews.length > 0
       ? reviews.reduce((sum, reviewItem) => sum + reviewItem.reviewValue, 0) /
         reviews.length
       : 0;
+
+  const handleDeleteReview = async (reviewId) => {
+    if (!productDetails?._id) return;
+
+    try {
+      const deleteAction = isAdmin ? adminDeleteReview : deleteReview;
+      const result = await dispatch(deleteAction({ 
+        productId: productDetails._id, 
+        reviewId 
+      })).unwrap();
+
+      if (result.success) {
+        if (isAdmin) {
+          dispatch(fetchAllProducts());
+        } else {
+          dispatch(getReviews(productDetails._id));
+        }
+        
+        toast({
+          title: "Success",
+          description: "Review deleted successfully",
+        });
+        
+        setOpen(false);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete review",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const canDeleteReview = (review) => {
+    if (isAdmin) return true;
+    return user?.id === review.userId;
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
@@ -170,7 +206,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             <div className="grid gap-6">
               {reviews && reviews.length > 0 ? (
                 reviews.map((reviewItem) => (
-                  <div className="flex gap-4">
+                  <div className="flex gap-4" key={reviewItem._id}>
                     <Avatar className="w-10 h-10 border">
                       <AvatarFallback>
                         {reviewItem?.userName[0].toUpperCase()}
@@ -186,7 +222,28 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
                       <p className="text-muted-foreground">
                         {reviewItem.reviewMessage}
                       </p>
+                      {reviewItem.reviewImages && reviewItem.reviewImages.length > 0 && (
+                        <div className="flex gap-2 mt-2 flex-wrap">
+                          {reviewItem.reviewImages.map((image, index) => (
+                            <img
+                              key={index}
+                              src={image}
+                              alt={`Review image ${index + 1}`}
+                              className="w-20 h-20 object-cover rounded"
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
+                    {canDeleteReview(reviewItem) && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteReview(reviewItem._id)}
+                      >
+                        Delete
+                      </Button>
+                    )}
                   </div>
                 ))
               ) : (
@@ -195,24 +252,11 @@ function ProductDetailsDialog({ open, setOpen, productDetails }) {
             </div>
             <div className="mt-10 flex-col flex gap-2">
               <Label>Write a review</Label>
-              <div className="flex gap-1">
-                <StarRatingComponent
-                  rating={rating}
-                  handleRatingChange={handleRatingChange}
-                />
-              </div>
-              <Input
-                name="reviewMsg"
-                value={reviewMsg}
-                onChange={(event) => setReviewMsg(event.target.value)}
-                placeholder="Write a review..."
+              <ReviewImageUpload
+                onSubmitReview={handleSubmitReview}
+                rating={rating}
+                handleRatingChange={handleRatingChange}
               />
-              <Button
-                onClick={handleAddReview}
-                disabled={reviewMsg.trim() === ""}
-              >
-                Submit
-              </Button>
             </div>
           </div>
         </div>
