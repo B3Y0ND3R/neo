@@ -2,7 +2,8 @@ import Header from "@/components/home/header";
 import Layout from "@/components/home/layout";
 import ProductFilter from "@/components/shopping-view/filter";
 import ProductDetailsDialog from "@/components/shopping-view/product-details";
-import ShoppingProductTile from "@/components/shopping-view/product-tile";
+import HomeProductTile from "@/components/home/product-tile";
+import HomeProductDetails from "@/components/home/product-details";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -187,16 +188,16 @@ function HomeListing() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
           {productList && productList.length > 0
             ? productList.map((productItem) => (
-                <ShoppingProductTile
-                  handleGetProductDetails={handleGetProductDetails}
+                <HomeProductTile
                   product={productItem}
+                  handleGetProductDetails={handleGetProductDetails}
                   handleAddtoCart={handleAddtoCart}
                 />
               ))
             : null}
         </div>
       </div>
-      <ProductDetailsDialog
+      <HomeProductDetails
         open={openDetailsDialog}
         setOpen={setOpenDetailsDialog}
         productDetails={productDetails}

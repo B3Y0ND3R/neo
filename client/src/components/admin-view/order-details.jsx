@@ -22,8 +22,6 @@ function AdminOrderDetailsView({ orderDetails }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
 
-  console.log(orderDetails, "orderDetailsorderDetails");
-
   function handleUpdateStatus(event) {
     event.preventDefault();
     const { status } = formData;
@@ -42,8 +40,25 @@ function AdminOrderDetailsView({ orderDetails }) {
     });
   }
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "pending":
+        return "bg-yellow-500";
+      case "inProcess":
+        return "bg-blue-500";
+      case "inShipping":
+        return "bg-purple-500";
+      case "delivered":
+        return "bg-green-500";
+      case "rejected":
+        return "bg-red-600";
+      default:
+        return "bg-black";
+    }
+  };
+
   return (
-    <DialogContent className="sm:max-w-[600px]">
+    <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
       <div className="grid gap-6">
         <div className="grid gap-2">
           <div className="flex mt-6 items-center justify-between">
@@ -70,13 +85,7 @@ function AdminOrderDetailsView({ orderDetails }) {
             <p className="font-medium">Order Status</p>
             <Label>
               <Badge
-                className={`py-1 px-3 ${
-                  orderDetails?.orderStatus === "confirmed"
-                    ? "bg-green-500"
-                    : orderDetails?.orderStatus === "rejected"
-                    ? "bg-red-600"
-                    : "bg-black"
-                }`}
+                className={`py-1 px-3 ${getStatusColor(orderDetails?.orderStatus)}`}
               >
                 {orderDetails?.orderStatus}
               </Badge>
@@ -90,7 +99,7 @@ function AdminOrderDetailsView({ orderDetails }) {
             <ul className="grid gap-3">
               {orderDetails?.cartItems && orderDetails?.cartItems.length > 0
                 ? orderDetails?.cartItems.map((item) => (
-                    <li className="flex items-center justify-between">
+                    <li key={item._id} className="flex items-center justify-between">
                       <span>Title: {item.title}</span>
                       <span>Quantity: {item.quantity}</span>
                       <span>Price: ${item.price}</span>

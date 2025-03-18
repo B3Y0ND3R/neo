@@ -4,6 +4,7 @@ import axios from "axios";
 const initialState = {
   orderList: [],
   orderDetails: null,
+  isLoading: false,
 };
 
 export const getAllOrdersForAdmin = createAsyncThunk(
@@ -42,6 +43,23 @@ export const updateOrderStatus = createAsyncThunk(
   }
 );
 
+export const deleteOrder = createAsyncThunk(
+  "/order/deleteOrder",
+  async (id) => {
+    const response = await axios.delete(`http://localhost:5000/api/admin/orders/${id}`);
+    return response.data;
+  }
+);
+
+// New action to delete orders older than 30 days
+export const deleteOrdersOlderThan30Days = createAsyncThunk(
+  "/order/deleteOrdersOlderThan30Days",
+  async () => {
+    const response = await axios.delete(`http://localhost:5000/api/admin/orders/delete-old`);
+    return response.data;
+  }
+);
+
 const adminOrderSlice = createSlice({
   name: "adminOrderSlice",
   initialState,
@@ -75,6 +93,14 @@ const adminOrderSlice = createSlice({
       .addCase(getOrderDetailsForAdmin.rejected, (state) => {
         state.isLoading = false;
         state.orderDetails = null;
+      })
+      .addCase(deleteOrder.fulfilled, (state, action) => {
+        // Optionally handle the state after deleting an order
+        state.orderList = state.orderList.filter(order => order._id !== action.payload.data._id);
+      })
+      .addCase(deleteOrdersOlderThan30Days.fulfilled, (state, action) => {
+        // Optionally handle the state after deleting old orders
+        state.orderList = state.orderList.filter(order => new Date(order.orderDate) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
       });
   },
 });

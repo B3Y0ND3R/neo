@@ -8,36 +8,58 @@ import {
   getSearchResults,
   resetSearchResults,
 } from "@/store/shop/search-slice";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import debounce from 'lodash/debounce';
+import { Loader2 } from "lucide-react";
 
 function SearchProducts() {
   const [keyword, setKeyword] = useState("");
+  const [isSearching, setIsSearching] = useState(false);
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const dispatch = useDispatch();
   const { searchResults } = useSelector((state) => state.shopSearch);
   const { productDetails } = useSelector((state) => state.shopProducts);
-
   const { user } = useSelector((state) => state.auth);
-
   const { cartItems } = useSelector((state) => state.shopCart);
   const { toast } = useToast();
+
+  // Initialize search from URL params
   useEffect(() => {
-    if (keyword && keyword.trim() !== "" && keyword.trim().length > 3) {
-      setTimeout(() => {
-        setSearchParams(new URLSearchParams(`?keyword=${keyword}`));
-        dispatch(getSearchResults(keyword));
-      }, 1000);
-    } else {
-      setSearchParams(new URLSearchParams(`?keyword=${keyword}`));
-      dispatch(resetSearchResults());
+    const urlKeyword = searchParams.get("keyword");
+    if (urlKeyword) {
+      setKeyword(urlKeyword);
+      if (urlKeyword.length > 2) {
+        dispatch(getSearchResults(urlKeyword));
+      }
     }
-  }, [keyword]);
+  }, []);
+
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce((searchTerm) => {
+      if (searchTerm && searchTerm.trim() !== "" && searchTerm.trim().length > 2) {
+        setIsSearching(true);
+        dispatch(getSearchResults(searchTerm))
+          .finally(() => setIsSearching(false));
+        setSearchParams(new URLSearchParams(`?keyword=${searchTerm}`));
+      } else {
+        setSearchParams(new URLSearchParams(`?keyword=${searchTerm}`));
+        dispatch(resetSearchResults());
+      }
+    }, 500),
+    []
+  );
+
+  useEffect(() => {
+    debouncedSearch(keyword);
+    return () => debouncedSearch.cancel();
+  }, [keyword, debouncedSearch]);
 
   function handleAddtoCart(getCurrentProductId, getTotalStock) {
-    console.log(cartItems);
     let getCartItems = cartItems.items || [];
 
     if (getCartItems.length) {
@@ -51,7 +73,6 @@ function SearchProducts() {
             title: `Only ${getQuantity} quantity can be added for this item`,
             variant: "destructive",
           });
-
           return;
         }
       }
@@ -74,7 +95,6 @@ function SearchProducts() {
   }
 
   function handleGetProductDetails(getCurrentProductId) {
-    console.log(getCurrentProductId);
     dispatch(fetchProductDetails(getCurrentProductId));
   }
 
@@ -82,33 +102,87 @@ function SearchProducts() {
     if (productDetails !== null) setOpenDetailsDialog(true);
   }, [productDetails]);
 
-  console.log(searchResults, "searchResults");
-
   return (
     <div className="container mx-auto md:px-6 px-4 py-8">
       <div className="flex justify-center mb-8">
-        <div className="w-full flex items-center">
-          <Input
-            value={keyword}
-            name="keyword"
-            onChange={(event) => setKeyword(event.target.value)}
-            className="py-6"
-            placeholder="Search Products..."
-          />
+        <div className="w-full max-w-2xl">
+          <div className="relative">
+            <Input
+              value={keyword}
+              name="keyword"
+              onChange={(event) => setKeyword(event.target.value)}
+              className="py-6 pr-12 text-lg shadow-lg focus-visible:ring-yellow-400"
+              placeholder="Search for products..."
+            />
+            {isSearching && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <Loader2 className="w-6 h-6 animate-spin text-yellow-400" />
+              </div>
+            )}
+          </div>
+          
+          {keyword.length > 0 && keyword.length <= 2 && (
+            <p className="text-sm text-gray-500 mt-2">
+              Please enter at least 3 characters to search
+            </p>
+          )}
         </div>
       </div>
-      {!searchResults.length ? (
-        <h1 className="text-5xl font-extrabold">No result found!</h1>
-      ) : null}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-        {searchResults.map((item) => (
-          <ShoppingProductTile
-            handleAddtoCart={handleAddtoCart}
-            product={item}
-            handleGetProductDetails={handleGetProductDetails}
-          />
-        ))}
-      </div>
+
+      <AnimatePresence mode="wait">
+        {isSearching ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex justify-center items-center min-h-[300px]"
+          >
+            <Loader2 className="w-12 h-12 animate-spin text-yellow-400" />
+          </motion.div>
+        ) : (
+          <>
+            {!searchResults.length && keyword.length > 2 ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                className="text-center"
+              >
+                <h1 className="text-4xl font-bold text-gray-800">No results found</h1>
+                <p className="text-gray-600 mt-2">
+                  Try different keywords or check the spelling
+                </p>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"
+              >
+                {searchResults.map((item, index) => (
+                  <motion.div
+                    key={item._id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ 
+                      opacity: 1, 
+                      y: 0,
+                      transition: { delay: index * 0.1 }
+                    }}
+                  >
+                    <ShoppingProductTile
+                      handleAddtoCart={handleAddtoCart}
+                      product={item}
+                      handleGetProductDetails={handleGetProductDetails}
+                    />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </>
+        )}
+      </AnimatePresence>
+
       <ProductDetailsDialog
         open={openDetailsDialog}
         setOpen={setOpenDetailsDialog}

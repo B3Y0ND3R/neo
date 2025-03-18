@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { registerUser } from "@/store/auth-slice";
-import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Check, X } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
+import axios from 'axios';
+import { debounce } from 'lodash';
 
 const initialState = {
   userName: "",
@@ -14,17 +16,140 @@ const initialState = {
   confirmPassword: "",
 };
 
+const passwordRequirements = [
+  { id: 'length', label: 'At least 8 characters', regex: /.{8,}/ },
+  { id: 'lowercase', label: 'One lowercase letter', regex: /[a-z]/ },
+  { id: 'uppercase', label: 'One uppercase letter', regex: /[A-Z]/ },
+  { id: 'number', label: 'One number', regex: /\d/ },
+  { id: 'special', label: 'One special character', regex: /[!@#$%^&*(),.?":{}|<>]/ },
+];
+
 function AuthRegister() {
   const [formData, setFormData] = useState(initialState);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState({});
+  const [isEmailValid, setIsEmailValid] = useState(true);
+  const [emailVerificationStatus, setEmailVerificationStatus] = useState({
+    isChecking: false,
+    isValid: false,
+    message: '',
+    details: null
+  });
+  const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Email validation regex
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Debounced email verification function
+  const verifyEmail = debounce(async (email) => {
+    if (!email || !validateEmail(email)) return;
+
+    setEmailVerificationStatus(prev => ({ ...prev, isChecking: true }));
+    try {
+      const response = await axios.get(
+        `https://emailvalidation.abstractapi.com/v1/`,
+        {
+          params: {
+            api_key: '61ab867061f8468cba341cdeb37e4ffa',
+            email: email
+          }
+        }
+      );
+
+      // Check if we got a valid response
+      if (response.data && response.data.deliverability) {
+        setEmailVerificationStatus({
+          isChecking: false,
+          isValid: response.data.deliverability === "DELIVERABLE",
+          message: getEmailValidationMessage(response.data),
+          details: response.data
+        });
+      } else {
+        setEmailVerificationStatus({
+          isChecking: false,
+          isValid: false,
+          message: "Invalid response format",
+          details: null
+        });
+      }
+    } catch (error) {
+      // Handle errors gracefully
+      setEmailVerificationStatus({
+        isChecking: false,
+        isValid: false,
+        message: "Could not verify email at this time",
+        details: null
+      });
+    }
+  }, 800);
+
+  // Helper function to generate validation message
+  const getEmailValidationMessage = (data) => {
+    if (!data.deliverability) return "Invalid email format";
+    if (data.is_disposable_email.value) return "Please use a non-disposable email";
+    if (data.deliverability === "UNDELIVERABLE") return "This email address appears to be invalid";
+    if (data.deliverability === "DELIVERABLE") return "Valid email address";
+    return "Email validation uncertain";
+  };
+
+  // Check password requirements
+  useEffect(() => {
+    const strength = {};
+    passwordRequirements.forEach(({ id, regex }) => {
+      strength[id] = regex.test(formData.password);
+    });
+    setPasswordStrength(strength);
+  }, [formData.password]);
+
+  const handleEmailChange = (e) => {
+    const email = e.target.value;
+    setFormData({ ...formData, email });
+    setIsEmailValid(validateEmail(email));
+    
+    if (validateEmail(email)) {
+      verifyEmail(email);
+    } else {
+      setEmailVerificationStatus({
+        isChecking: false,
+        isValid: false,
+        message: '',
+        details: null
+      });
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const newPassword = e.target.value;
+    setFormData(prev => ({ ...prev, password: newPassword }));
+    if (!showPasswordRequirements && newPassword) {
+      setShowPasswordRequirements(true);
+    }
+  };
+
+  const isPasswordValid = () => {
+    return Object.values(passwordStrength).every(Boolean);
+  };
+
   function onSubmit(event) {
     event.preventDefault();
+
+    if (!isEmailValid || !emailVerificationStatus.isValid) {
+      toast({
+        title: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!agreedToTerms) {
       toast({
         title: "Please agree to the Terms of Service",
@@ -32,6 +157,15 @@ function AuthRegister() {
       });
       return;
     }
+
+    if (!isPasswordValid()) {
+      toast({
+        title: "Password does not meet requirements",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       toast({
         title: "Passwords do not match",
@@ -39,6 +173,7 @@ function AuthRegister() {
       });
       return;
     }
+
     dispatch(registerUser(formData)).then((data) => {
       if (data?.payload?.success) {
         toast({
@@ -119,9 +254,38 @@ function AuthRegister() {
                 type="email"
                 placeholder="Email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                onChange={handleEmailChange}
+                className={`w-full pl-10 pr-4 py-2 border ${
+                  emailVerificationStatus.isValid ? 'border-green-500' : 
+                  emailVerificationStatus.message ? 'border-red-500' : 
+                  'border-gray-200'
+                } rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500`}
               />
+              {formData.email && (
+                <div className="mt-1 text-sm">
+                  {emailVerificationStatus.isChecking ? (
+                    <div className="flex items-center text-gray-500">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full mr-2"
+                      />
+                      Verifying email...
+                    </div>
+                  ) : (
+                    <div className={`flex items-center ${
+                      emailVerificationStatus.isValid ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {emailVerificationStatus.isValid ? (
+                        <Check className="h-4 w-4 mr-2" />
+                      ) : (
+                        <X className="h-4 w-4 mr-2" />
+                      )}
+                      {emailVerificationStatus.message}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="relative">
@@ -132,7 +296,8 @@ function AuthRegister() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Password"
                 value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                onChange={handlePasswordChange}
+                onFocus={() => setShowPasswordRequirements(true)}
                 className="w-full pl-10 pr-12 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               <button
@@ -143,6 +308,29 @@ function AuthRegister() {
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
+
+            {/* Password requirements checklist - only show when password field is in use */}
+            {showPasswordRequirements && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                transition={{ duration: 0.3 }}
+                className="space-y-2 text-sm"
+              >
+                {passwordRequirements.map(({ id, label }) => (
+                  <div key={id} className="flex items-center space-x-2">
+                    {passwordStrength[id] ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <X className="h-4 w-4 text-gray-300" />
+                    )}
+                    <span className={passwordStrength[id] ? 'text-green-500' : 'text-gray-500'}>
+                      {label}
+                    </span>
+                  </div>
+                ))}
+              </motion.div>
+            )}
 
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -191,52 +379,6 @@ function AuthRegister() {
             >
               Create Account
             </motion.button>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-4"
-          >
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">
-                  By creating an account, you agree to our
-                </span>
-              </div>
-            </div>
-
-            <div className="text-center text-sm space-x-1">
-              <Link 
-                to="/terms" 
-                className="text-purple-600 hover:text-purple-500 transition-colors"
-              >
-                Terms of Service
-              </Link>
-              <span className="text-gray-500">and</span>
-              <Link 
-                to="/privacy" 
-                className="text-purple-600 hover:text-purple-500 transition-colors"
-              >
-                Privacy Policy
-              </Link>
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-center text-sm text-gray-500"
-            >
-              <div className="flex items-center justify-center space-x-2">
-                <span>🔒</span>
-                <span>Your data is securely encrypted</span>
-              </div>
-            </motion.div>
           </motion.div>
         </motion.div>
       </div>
