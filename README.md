@@ -90,7 +90,7 @@ neo-up/
 │   │   │   ├── shop/                # Shop Components (2 files)
 │   │   │   │   ├── review-image-upload.jsx # Review image upload
 │   │   │   │   └── star-rating.jsx  # Shop star rating
-│   │   │   └── VirtualTryOn.jsx     # Virtual try-on component
+│   │   │   
 │   │   ├── pages/                   # Page Components
 │   │   │   ├── admin-view/          # Admin Pages (11 files + 1 subfolder)
 │   │   │   │   ├── about-us.jsx     # About us management
@@ -123,8 +123,7 @@ neo-up/
 │   │   │   ├── home/                # Public Home Pages (2 files)
 │   │   │   │   ├── home.jsx         # Main homepage
 │   │   │   │   └── listing.jsx      # Public listings
-│   │   │   ├── virtual-try-on/      # Virtual Try-on Pages (1 file)
-│   │   │   │   └── virtual-try-on.jsx # Virtual try-on page
+│   │   │   
 │   │   │   ├── not-found/           # Error Pages (1 file)
 │   │   │   │   └── index.jsx        # 404 page
 │   │   │   ├── unauth-page/         # Unauthorized Pages (1 file)
@@ -268,36 +267,6 @@ neo-up/
 │   ├── package.json                 # Backend dependencies
 │   ├── package-lock.json            # Dependency lock file
 │   └── .gitignore                   # Git ignore rules
-├── sentiment-service/               # Python AI Service
-│   ├── app.py                       # Flask application
-│   ├── requirements.txt             # Python dependencies
-│   ├── lstm_model.h5                # LSTM model
-│   ├── tokenizer.pickle             # Tokenizer file
-│   ├── bert-eng/                    # English BERT Model
-│   │   ├── config.json              # Model configuration
-│   │   ├── model.safetensors        # Model weights
-│   │   ├── special_tokens_map.json  # Special tokens mapping
-│   │   ├── tokenizer_config.json    # Tokenizer configuration
-│   │   └── vocab.txt                # Vocabulary file
-│   ├── bert-bn/                     # Bangla BERT Model
-│   │   ├── config.json              # Model configuration
-│   │   ├── model.safetensors        # Model weights
-│   │   ├── special_tokens_map.json  # Special tokens mapping
-│   │   ├── tokenizer_config.json    # Tokenizer configuration
-│   │   └── vocab.txt                # Vocabulary file
-│   ├── banglish/                    # Banglish BERT Model
-│   │   ├── config.json              # Model configuration
-│   │   ├── model.safetensors        # Model weights
-│   │   ├── sentencepiece.bpe.model  # SentencePiece model
-│   │   ├── tokenizer_config.json    # Tokenizer configuration
-│   │   └── special_tokens_map.json  # Special tokens mapping
-│   └── venv/                        # Python virtual environment
-│       ├── Include/                 # Include files
-│       ├── Lib/                     # Python libraries
-│       ├── Scripts/                 # Scripts
-│       ├── share/                   # Shared files
-│       └── pyvenv.cfg               # Virtual environment config
-├── .venv/                           # Root virtual environment
 └── .git/                            # Git repository
 ```
 
@@ -385,29 +354,8 @@ neo-up/
 - **Chat History**: Persistent chat conversations
 - **Admin Chat Interface**: Dedicated support agent dashboard
 
-### **6. Virtual Try-On**
-- **AI-Powered Try-On**: Advanced virtual clothing fitting
-  - FAL.AI integration for image processing
-  - Real-time clothing overlay
-  - Multiple clothing options
-- **Try-On Interface**: User-friendly virtual try-on experience
-  - Image upload
-  - Clothing selection
-  - Result display
 
-### **7. AI-Powered Virtual Try-On**
-- **AI-Powered Try-On**: Advanced virtual clothing fitting
-  - FAL.AI integration for image processing
-  - Real-time clothing overlay on user images
-  - Multiple clothing options and styles
-  - Size and fit visualization
-- **Try-On Interface**: User-friendly virtual try-on experience
-  - Image upload and processing
-  - Clothing selection interface
-  - Result display and comparison
-  - Try-on history management
-
-### **8. Content Management**
+### **6. Content Management**
 - **About Us Management**: Dynamic company information editing
 - **FAQ System**: Comprehensive FAQ management
   - Add/Edit/Delete FAQs
@@ -416,7 +364,7 @@ neo-up/
 - **Contact Form**: Customer inquiry handling system
 - **Dynamic Content**: Admin-editable content throughout the site
 
-### **9. Image & Media Handling**
+### **7. Image & Media Handling**
 - **Cloudinary Integration**: Cloud-based image storage and processing
   - Automatic image optimization
   - Multiple format support
@@ -428,7 +376,7 @@ neo-up/
 - **Image Processing**: Automatic image optimization and resizing
 - **Media Management**: Organized media storage and retrieval
 
-### **10. Search & Filtering**
+### **8. Search & Filtering**
 - **Advanced Search**: Intelligent product search functionality
   - Keyword matching
   - Category filtering
@@ -441,16 +389,8 @@ neo-up/
 - **Search Results**: Paginated and sorted search results
 - **Filter Management**: Admin-controlled filter system
 
-### **11. Notification System**
-- **Email Notifications**: Comprehensive email system
-  - Order confirmations
-  - Password reset emails
-  - Payment confirmations
-  - Refund notifications
-- **Toast Notifications**: In-app notification system
-- **Real-time Updates**: Live status updates and notifications
 
-### **12. Responsive Design**
+### **9. Responsive Design**
 - **Mobile-First Design**: Responsive design approach
 - **Cross-browser Compatibility**: Multi-browser support
 - **Accessibility**: WCAG compliance features
@@ -468,7 +408,6 @@ neo-up/
 | **Database** | MongoDB + Mongoose | NoSQL database with ODM |
 | **Authentication** | Passport.js + JWT | Multi-strategy authentication |
 | **Real-time** | Socket.io | WebSocket-based real-time communication |
-| **AI/ML** | Flask + BERT | Python-based AI service for virtual try-on |
 | **Payment** | PayPal REST SDK | Secure payment processing |
 | **Storage** | Cloudinary | Cloud media storage and CDN |
 | **Email** | SendInBlue | Transactional email service |
@@ -486,7 +425,6 @@ neo-up/
 |-----------|-------|----------------|-------------|
 | **Client** | 80+ files | 15+ subdirectories | React frontend application |
 | **Server** | 40+ files | 8+ subdirectories | Node.js backend API |
-| **AI Service** | 20+ files | 4+ subdirectories | Python AI service |
 | **Total** | **140+ files** | **30+ subdirectories** | Complete e-commerce platform |
 
 ## 🚀 Getting Started
@@ -494,130 +432,10 @@ neo-up/
 ### Prerequisites
 - Node.js (v16 or higher)
 - MongoDB
-- Python 3.8+
 - PayPal Developer Account
 - Cloudinary Account
 - SendInBlue Account
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd neo-up
-   ```
-
-2. **Install Frontend Dependencies**
-   ```bash
-   cd client
-   npm install
-   ```
-
-3. **Install Backend Dependencies**
-   ```bash
-   cd ../server
-   npm install
-   ```
-
-4. **Setup Python Environment**
-   ```bash
-   cd ../sentiment-service
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-
-5. **Environment Configuration**
-   - Create `.env` files in both `server/` and `sentiment-service/` directories
-   - Configure database, API keys, and service credentials
-
-6. **Start Development Servers**
-   ```bash
-   # Terminal 1: Frontend
-   cd client && npm run dev
-   
-   # Terminal 2: Backend
-   cd server && npm run dev
-   
-   # Terminal 3: AI Service
-   cd sentiment-service && python app.py
-   ```
-
-## 📝 Environment Variables
-
-### Server (.env)
-```env
-MONGODB_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret
-GOOGLE_CLIENT_ID=your_google_oauth_client_id
-GOOGLE_CLIENT_SECRET=your_google_oauth_client_secret
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-PAYPAL_CLIENT_ID=your_paypal_client_id
-PAYPAL_CLIENT_SECRET=your_paypal_client_secret
-SENDINBLUE_API_KEY=your_sendinblue_api_key
-```
-
-### AI Service (.env)
-```env
-FLASK_ENV=development
-FLASK_DEBUG=1
-```
-
-## 🏃‍♂️ Available Scripts
-
-### Frontend (client/)
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
-- `npm run lint` - Run ESLint
-
-### Backend (server/)
-- `npm run dev` - Start development server with nodemon
-- `npm start` - Start production server
-
-### AI Service (sentiment-service/)
-- `python app.py` - Start Flask development server
-
-## 📱 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/logout` - User logout
-- `POST /api/auth/forgot-password` - Password recovery
-- `POST /api/auth/reset-password` - Password reset
-
-### Products
-- `GET /api/shop/products` - Get all products
-- `GET /api/shop/products/:id` - Get product by ID
-- `POST /api/admin/products` - Create product (Admin)
-- `PUT /api/admin/products/:id` - Update product (Admin)
-- `DELETE /api/admin/products/:id` - Delete product (Admin)
-
-### Orders
-- `GET /api/shop/orders` - Get user orders
-- `POST /api/shop/orders` - Create order
-- `GET /api/admin/orders` - Get all orders (Admin)
-- `PUT /api/admin/orders/:id` - Update order status (Admin)
-
-### Cart
-- `GET /api/shop/cart` - Get user cart
-- `POST /api/shop/cart` - Add item to cart
-- `PUT /api/shop/cart/:id` - Update cart item
-- `DELETE /api/shop/cart/:id` - Remove cart item
-
-### AI Services
-- `POST /ai/predict` - AI-powered predictions
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## 📄 License
 
@@ -625,13 +443,11 @@ This project is licensed under the ISC License - see the LICENSE file for detail
 
 ## 👥 Authors
 
-- **Hasib** - *Initial work*
-- **Abid** - *Initial work*
+- **Hasib**
+- **Abid** 
 
 ## 🙏 Acknowledgments
 
-- FAL.AI for virtual try-on capabilities
-- Hugging Face for BERT models
 - PayPal for payment processing
 - Cloudinary for media management
 - SendInBlue for email services
