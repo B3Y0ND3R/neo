@@ -1,11 +1,12 @@
 import Address from "@/components/shopping-view/address";
 import img from "../../assets/account.jpg";
 import { useDispatch, useSelector } from "react-redux";
-import UserCartItemsContent from "@/components/shopping-view/cart-items-content";
+import CheckoutItem from "@/components/shopping-view/checkout-item";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { createNewOrder } from "@/store/shop/order-slice";
-import { Navigate } from "react-router-dom";
+import { clearCart } from "@/store/shop/cart-slice";
+import { Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
 
 function ShoppingCheckout() {
@@ -15,6 +16,7 @@ function ShoppingCheckout() {
   const [currentSelectedAddress, setCurrentSelectedAddress] = useState(null);
   const [isPaymentStart, setIsPaymemntStart] = useState(false);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   console.log(currentSelectedAddress, "cartItems");
@@ -33,6 +35,14 @@ function ShoppingCheckout() {
       : 0;
 
   function handleInitiatePaypalPayment() {
+    handleCreateOrder("paypal");
+  }
+
+  function handleCashOnDelivery() {
+    handleCreateOrder("cod");
+  }
+
+  function handleCreateOrder(paymentMethod) {
     if (cartItems.length === 0) {
       toast({
         title: "Your cart is empty. Please add items to proceed",
@@ -62,6 +72,7 @@ function ShoppingCheckout() {
             ? singleCartItem?.salePrice
             : singleCartItem?.price,
         quantity: singleCartItem?.quantity,
+        size: singleCartItem?.size, // Add size information
       })),
       addressInfo: {
         addressId: currentSelectedAddress?._id,
@@ -71,9 +82,9 @@ function ShoppingCheckout() {
         phone: currentSelectedAddress?.phone,
         notes: currentSelectedAddress?.notes,
       },
-      orderStatus: "pending",
-      paymentMethod: "paypal",
-      paymentStatus: "pending",
+      orderStatus: paymentMethod === "cod" ? "pending" : "pending",
+      paymentMethod: paymentMethod,
+      paymentStatus: paymentMethod === "cod" ? "pending" : "pending",
       totalAmount: totalCartAmount,
       orderDate: new Date(),
       orderUpdateDate: new Date(),
@@ -84,14 +95,26 @@ function ShoppingCheckout() {
     dispatch(createNewOrder(orderData)).then((data) => {
       console.log(data, "Abid");
       if (data?.payload?.success) {
-        setIsPaymemntStart(true);
+        if (paymentMethod === "cod") {
+          // Clear cart after successful COD order (both frontend and backend)
+          dispatch(clearCart());
+          toast({
+            title: "Order placed successfully!",
+            description: "Your Cash on Delivery order has been placed.",
+          });
+          // Redirect to account page where orders are displayed
+          navigate("/shop/account");
+        } else {
+          setIsPaymemntStart(true);
+        }
       } else {
         setIsPaymemntStart(false);
       }
     });
   }
 
-  if (approvalURL) {
+  // Only redirect to PayPal if approvalURL exists (for PayPal payments only)
+  if (approvalURL && !isPaymentStart) {
     window.location.href = approvalURL;
   }
 
@@ -108,7 +131,7 @@ function ShoppingCheckout() {
         <div className="flex flex-col gap-4">
           {cartItems && cartItems.items && cartItems.items.length > 0
             ? cartItems.items.map((item) => (
-                <UserCartItemsContent cartItem={item} />
+                <CheckoutItem key={`${item.productId}-${item.size}`} cartItem={item} />
               ))
             : null}
           <div className="mt-8 space-y-4">
@@ -117,11 +140,18 @@ function ShoppingCheckout() {
               <span className="font-bold">${totalCartAmount}</span>
             </div>
           </div>
-          <div className="mt-4 w-full">
+          <div className="mt-4 w-full space-y-2">
             <Button onClick={handleInitiatePaypalPayment} className="w-full">
               {isPaymentStart
                 ? "Processing Paypal Payment..."
                 : "Checkout with Paypal"}
+            </Button>
+            <Button 
+              onClick={handleCashOnDelivery} 
+              variant="outline" 
+              className="w-full"
+            >
+              Cash on Delivery
             </Button>
           </div>
         </div>

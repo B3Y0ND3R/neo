@@ -66,23 +66,17 @@ export const registerFormControls = [
     {
       name: "category",
       type: "select",
-      placeholder: "Enter category",
+      placeholder: "Select category",
       label: "Category",
       componentType: "select",
-      options: [
-        {
-          id: "men",
-          label: "Men",
-        },
-        {
-          id: "women",
-          label: "Women",
-        },
-        {
-          id: "kids",
-          label: "Kids",
-        },
-      ],
+options: [
+  { id: "shirt", label: "Shirt" },
+  { id: "tshirt", label: "T-Shirt" },
+  { id: "jeans", label: "Jeans" },
+  { id: "jacket", label: "Jacket" },
+  { id: "shorts", label: "Shorts" },
+{ id: "hoodie", label: "Hoodie" },
+],
     },
     {
       name: "brand",
@@ -106,13 +100,97 @@ export const registerFormControls = [
       label: "Sale Price",
       componentType: "input",
     },
+
     {
-      name: "totalStock",
+      name: "sizes.XS",
       type: "number",
-      placeholder: "Enter total stock",
-      label: "Total Stock",
+      placeholder: "Enter XS stock",
+      label: "XS Stock",
       componentType: "input",
+      min: 0,
     },
+    {
+      name: "sizes.S",
+      type: "number",
+      placeholder: "Enter S stock",
+      label: "S Stock",
+      componentType: "input",
+      min: 0,
+    },
+    {
+      name: "sizes.M",
+      type: "number",
+      placeholder: "Enter M stock",
+      label: "M Stock",
+      componentType: "input",
+      min: 0,
+    },
+    {
+      name: "sizes.L",
+      type: "number",
+      placeholder: "Enter L stock",
+      label: "L Stock",
+      componentType: "input",
+      min: 0,
+    },
+    {
+      name: "sizes.XL",
+      type: "number",
+      placeholder: "Enter XL stock",
+      label: "XL Stock",
+      componentType: "input",
+      min: 0,
+    },
+    {
+      name: "sizes.XXL",
+      type: "number",
+      placeholder: "Enter XXL stock",
+      label: "XXL Stock",
+      componentType: "input",
+      min: 0,
+    },
+    {
+      name: "color",
+      type: "text",
+      label: "Color",
+      placeholder: "Enter color",
+      componentType: "input",
+      options: [
+          { id: "red", label: "Red" },
+          { id: "blue", label: "Blue" },
+          { id: "black", label: "Black" },
+          { id: "white", label: "White" },
+          { id: "green", label: "Green" },
+          { id: "yellow", label: "Yellow" },
+          { id: "purple", label: "Purple" },
+          { id: "pink", label: "Pink" },
+          { id: "gray", label: "Gray" },
+          { id: "brown", label: "Brown" },
+          { id: "orange", label: "Orange" },
+          { id: "gold", label: "Gold" },
+          { id: "silver", label: "Silver" },
+          { id: "beige", label: "Beige" },
+          { id: "turquoise", label: "Turquoise" },
+          { id: "coral", label: "Coral" },
+          { id: "lime", label: "Lime" },
+          { id: "teal", label: "Teal" },
+          { id: "navy", label: "Navy" },
+          { id: "maroon", label: "Maroon" },
+          { id: "olive", label: "Olive" },
+      ],
+    },
+    {
+      name: "gender",
+      type: "select",
+      label: "Gender",
+      placeholder: "Select gender",
+      componentType: "select",
+      options: [
+        { id: "men", label: "Men" },
+        { id: "women", label: "Women" },
+        { id: "kids", label: "Kids" },
+      ],
+    },    
   ];
 
   export const getProductFormElements = (brandList = []) => {
@@ -164,16 +242,6 @@ export const registerFormControls = [
       path: "/shop/listing",
     },
     {
-      id: "footwear",
-      label: "Footwear",
-      path: "/shop/listing",
-    },
-    {
-      id: "accessories",
-      label: "Accessories",
-      path: "/shop/listing",
-    },
-    {
       id: "search",
       label: "Search",
       path: "/shop/search",
@@ -198,12 +266,18 @@ export const registerFormControls = [
   };
   
   export const filterOptions = {
-    category: [
+    gender: [
       { id: "men", label: "Men" },
       { id: "women", label: "Women" },
       { id: "kids", label: "Kids" },
-      { id: "accessories", label: "Accessories" },
-      { id: "footwear", label: "Footwear" },
+    ],
+    category: [
+      { id: "shirt", label: "Shirt" },
+      { id: "tshirt", label: "T-Shirt" },
+      { id: "jeans", label: "Jeans" },
+      { id: "jacket", label: "Jacket" },
+      { id: "shorts", label: "Shorts" },
+      { id: "hoodie", label: "Hoodie" },
     ],
     brand: [
       { id: "nike", label: "Nike" },
@@ -213,9 +287,40 @@ export const registerFormControls = [
       { id: "zara", label: "Zara" },
       { id: "h&m", label: "H&M" },
     ],
+    color: [
+      { id: "red", label: "Red" },
+      { id: "blue", label: "Blue" },
+      { id: "black", label: "Black" },
+      { id: "white", label: "White" },
+      { id: "green", label: "Green" },
+      { id: "yellow", label: "Yellow" },
+      { id: "purple", label: "Purple" },
+      { id: "pink", label: "Pink" },
+      { id: "gray", label: "Gray" },
+      { id: "brown", label: "Brown" },
+      { id: "orange", label: "Orange" },
+      { id: "gold", label: "Gold" },
+      { id: "silver", label: "Silver" },
+      { id: "beige", label: "Beige" },
+      { id: "turquoise", label: "Turquoise" },
+      { id: "coral", label: "Coral" },
+      { id: "lime", label: "Lime" },
+      { id: "teal", label: "Teal" },
+      { id: "navy", label: "Navy" },
+      { id: "maroon", label: "Maroon" },
+      { id: "olive", label: "Olive" },
+    ],
+    rating: [
+      { id: "1", label: "1 Star" },
+      { id: "2", label: "2 Stars" },
+      { id: "3", label: "3 Stars" },
+      { id: "4", label: "4 Stars" },
+      { id: "5", label: "5 Stars" },
+    ]
   };
   
   export const sortOptions = [
+    { id: "popular", label: "Popular" },
     { id: "price-lowtohigh", label: "Price: Low to High" },
     { id: "price-hightolow", label: "Price: High to Low" },
     { id: "title-atoz", label: "Title: A to Z" },

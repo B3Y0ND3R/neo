@@ -141,6 +141,46 @@ router.delete('/:userId/messages/:messageId', async (req, res) => {
   }
 });
 
+// Edit a specific message
+router.put('/:userId/messages/:messageId', async (req, res) => {
+  try {
+    const { userId, messageId } = req.params;
+    const { content } = req.body;
+    
+    if (!content || content.trim() === '') {
+      return res.status(400).json({ message: 'Content is required' });
+    }
+
+    const chat = await Chat.findOne({ user: userId });
+    
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    const message = chat.messages.find(
+      msg => msg._id.toString() === messageId
+    );
+    
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    // Only allow editing text messages
+    if (message.messageType === 'image') {
+      return res.status(400).json({ message: 'Cannot edit image messages' });
+    }
+
+    message.content = content.trim();
+    message.edited = true;
+    
+    await chat.save();
+    res.json(chat);
+  } catch (error) {
+    console.error('Error editing message:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Add image message
 router.post('/:userId/messages/image', upload.single('image'), async (req, res) => {
   try {

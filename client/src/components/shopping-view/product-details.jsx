@@ -18,6 +18,7 @@ import { fetchAllProducts } from "@/store/admin/products-slice";
 
 function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
   const [rating, setRating] = useState(0);
+  const [selectedSizes, setSelectedSizes] = useState({}); // {size: quantity}
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const reviews = useSelector((state) => state.shopReview.reviews);
@@ -54,36 +55,50 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
     });
   };
 
-  const handleAddToCart = (getCurrentProductId, getTotalStock) => {
+  const handleAddToCart = (getCurrentProductId, selectedSizes) => {
+    if (!selectedSizes || Object.keys(selectedSizes).length === 0) {
+      toast({ title: "Please select sizes", variant: "destructive" });
+      return;
+    }
+
     let getCartItems = reviews.items || [];
 
-    if (getCartItems.length) {
+    // Validate all selected sizes and quantities
+    for (const [size, quantity] of Object.entries(selectedSizes)) {
       const indexOfCurrentItem = getCartItems.findIndex(
-        (item) => item.productId === getCurrentProductId
+        (item) => item.productId === getCurrentProductId && item.size === size
       );
       if (indexOfCurrentItem > -1) {
         const getQuantity = getCartItems[indexOfCurrentItem].quantity;
-        if (getQuantity + 1 > getTotalStock) {
+        const sizeStock = productDetails?.sizes?.[size] || 0;
+        
+        if (getQuantity + quantity > sizeStock) {
           toast({
-            title: `Only ${getQuantity} quantity can be added for this item`,
+            title: `Only ${sizeStock} quantity available in size ${size}`,
             variant: "destructive",
           });
-
           return;
         }
       }
     }
-    dispatch(
-      addToCart({
+
+    // Add each size to cart
+    const promises = Object.entries(selectedSizes).map(([size, quantity]) => 
+      dispatch(addToCart({
         userId: user?.id,
         productId: getCurrentProductId,
-        quantity: 1,
-      })
-    ).then((data) => {
-      if (data?.payload?.success) {
+        quantity,
+        size,
+      }))
+    );
+
+    Promise.all(promises).then((results) => {
+      const allSuccess = results.every(res => res?.payload?.success);
+      if (allSuccess) {
         dispatch(fetchCartItems(user?.id));
+        const sizeText = Object.entries(selectedSizes).map(([size, qty]) => `${size}(${qty})`).join(', ');
         toast({
-          title: "Product is added to cart",
+          title: `Products added to cart (${sizeText})`,
         });
       }
     });
@@ -93,6 +108,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
     setOpen(false);
     dispatch(setProductDetails());
     setRating(0);
+    setSelectedSizes({});
     dispatch(getReviews(productDetails?._id));
   };
 
@@ -142,7 +158,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
 
   return (
     <Dialog open={open} onOpenChange={handleDialogClose}>
-      <DialogContent className="grid grid-cols-2 gap-8 sm:p-12 max-w-[90vw] sm:max-w-[80vw] lg:max-w-[70vw]">
+      <DialogContent className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8 p-4 sm:p-6 lg:p-12 max-w-[95vw] sm:max-w-[90vw] lg:max-w-[80vw] xl:max-w-[70vw] max-h-[90vh] overflow-y-auto">
         <div className="relative overflow-hidden rounded-lg">
           <img
             src={productDetails?.image}
@@ -152,23 +168,23 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
             className="aspect-square w-full object-cover"
           />
         </div>
-        <div className="">
+        <div className="space-y-4">
           <div>
-            <h1 className="text-3xl font-extrabold">{productDetails?.title}</h1>
-            <p className="text-muted-foreground text-2xl mb-5 mt-4">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold leading-tight">{productDetails?.title}</h1>
+            <p className="text-muted-foreground text-sm sm:text-base lg:text-lg mb-4 mt-2 leading-relaxed">
               {productDetails?.description}
             </p>
           </div>
           <div className="flex items-center justify-between">
             <p
-              className={`text-3xl font-bold text-primary ${
+              className={`text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-primary ${
                 productDetails?.salePrice > 0 ? "line-through" : ""
               }`}
             >
               ${productDetails?.price}
             </p>
             {productDetails?.salePrice > 0 ? (
-              <p className="text-2xl font-bold text-muted-foreground">
+              <p className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold text-muted-foreground">
                 ${productDetails?.salePrice}
               </p>
             ) : null}
@@ -177,49 +193,127 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
             <div className="flex items-center gap-0.5">
               <StarRatingComponent rating={averageReview} />
             </div> 
-             <span className="text-muted-foreground">
+             <span className="text-sm sm:text-base text-muted-foreground">
               ({averageReview.toFixed(2)})
             </span>
           </div>
-          <div className="mt-5 mb-5">
-            {productDetails?.totalStock === 0 ? (
-              <Button className="w-full opacity-60 cursor-not-allowed">
-                Out of Stock
-              </Button>
-            ) : (
-              <Button
-                className="w-full"
-                onClick={() =>
-                  handleAddToCart(
-                    productDetails?._id,
-                    productDetails?.totalStock
-                  )
-                }
-              >
-                Add to Cart
-              </Button>
-            )}
-          </div>
+          {/* Size Selection - Only for non-admin users */}
+          {!isAdmin && (
+            <>
+              <div className="mt-5 mb-3">
+                <p className="text-sm font-medium text-gray-700 mb-2">Select Sizes & Quantities:</p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(productDetails?.sizes || {}).map(([size, stock]) => (
+                    <div key={size} className="flex flex-col items-center">
+                      <button
+                        onClick={() => {
+                          setSelectedSizes(prev => {
+                            const newSizes = { ...prev };
+                            if (newSizes[size]) {
+                              delete newSizes[size];
+                            } else {
+                              newSizes[size] = 1;
+                            }
+                            return newSizes;
+                          });
+                        }}
+                        disabled={stock === 0}
+                        className={`px-3 py-2 text-sm rounded border transition-colors ${
+                          selectedSizes[size]
+                            ? 'bg-primary text-white border-primary'
+                            : stock > 0
+                            ? 'bg-white text-gray-700 border-gray-300 hover:border-primary'
+                            : 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                        }`}
+                      >
+                        {size} {stock > 0 ? `(${stock})` : '(Out of Stock)'}
+                      </button>
+                      {selectedSizes[size] && stock > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSizes(prev => ({
+                                ...prev,
+                                [size]: Math.max(1, (prev[size] || 1) - 1)
+                              }));
+                            }}
+                            className="w-5 h-5 text-xs bg-gray-200 rounded hover:bg-gray-300"
+                            disabled={selectedSizes[size] <= 1}
+                          >
+                            -
+                          </button>
+                          <span className="text-xs w-4 text-center">{selectedSizes[size]}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSizes(prev => ({
+                                ...prev,
+                                [size]: Math.min(stock, (prev[size] || 1) + 1)
+                              }));
+                            }}
+                            className="w-5 h-5 text-xs bg-gray-200 rounded hover:bg-gray-300"
+                            disabled={selectedSizes[size] >= stock}
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {Object.keys(selectedSizes).length > 0 && (
+                  <p className="text-xs text-blue-600 mt-2">
+                    Selected: {Object.entries(selectedSizes).map(([size, qty]) => `${size}(${qty})`).join(', ')}
+                  </p>
+                )}
+              </div>
+              
+              <div className="mt-5 mb-5">
+                {productDetails?.totalStock === 0 ? (
+                  <Button className="w-full opacity-60 cursor-not-allowed">
+                    Out of Stock
+                  </Button>
+                ) : Object.keys(selectedSizes).length === 0 ? (
+                  <Button className="w-full opacity-60 cursor-not-allowed">
+                    Please Select Sizes
+                  </Button>
+                ) : (
+                  <Button
+                    className="w-full"
+                    onClick={() =>
+                      handleAddToCart(
+                        productDetails?._id,
+                        selectedSizes
+                      )
+                    }
+                  >
+                    Add to Cart - {Object.entries(selectedSizes).map(([size, qty]) => `${size}(${qty})`).join(', ')}
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
           <Separator />
-          <div className="max-h-[300px] overflow-auto">
-            <h2 className="text-xl font-bold mb-4">Reviews</h2>
+          <div className="max-h-[200px] sm:max-h-[250px] lg:max-h-[300px] overflow-auto">
+            <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Reviews</h2>
             <div className="grid gap-6">
               {reviews && reviews.length > 0 ? (
                 reviews.map((reviewItem) => (
-                  <div className="flex gap-4" key={reviewItem._id}>
-                    <Avatar className="w-10 h-10 border">
-                      <AvatarFallback>
+                  <div className="flex gap-3 sm:gap-4" key={reviewItem._id}>
+                    <Avatar className="w-8 h-8 sm:w-10 sm:h-10 border flex-shrink-0">
+                      <AvatarFallback className="text-xs sm:text-sm">
                         {reviewItem?.userName[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid gap-1">
+                    <div className="grid gap-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold">{reviewItem?.userName}</h3>
+                        <h3 className="font-bold text-sm sm:text-base">{reviewItem?.userName}</h3>
                       </div>
                       <div className="flex items-center gap-0.5">
                         <StarRatingComponent rating={reviewItem?.reviewValue} />
                       </div>
-                      <p className="text-muted-foreground">
+                      <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
                         {reviewItem.reviewMessage}
                       </p>
                       {reviewItem.reviewImages && reviewItem.reviewImages.length > 0 && (
@@ -229,7 +323,7 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
                               key={index}
                               src={image}
                               alt={`Review image ${index + 1}`}
-                              className="w-20 h-20 object-cover rounded"
+                              className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded"
                             />
                           ))}
                         </div>
@@ -250,14 +344,17 @@ function ProductDetailsDialog({ open, setOpen, productDetails, isAdmin }) {
                 <h1>No Reviews</h1>
               )}
             </div>
-            <div className="mt-10 flex-col flex gap-2">
-              <Label>Write a review</Label>
-              <ReviewImageUpload
-                onSubmitReview={handleSubmitReview}
-                rating={rating}
-                handleRatingChange={handleRatingChange}
-              />
-            </div>
+            {/* Review submission - Only for non-admin users */}
+            {!isAdmin && (
+              <div className="mt-6 sm:mt-8 lg:mt-10 flex-col flex gap-2">
+                <Label className="text-sm sm:text-base">Write a review</Label>
+                <ReviewImageUpload
+                  onSubmitReview={handleSubmitReview}
+                  rating={rating}
+                  handleRatingChange={handleRatingChange}
+                />
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

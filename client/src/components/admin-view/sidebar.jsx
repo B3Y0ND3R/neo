@@ -8,6 +8,7 @@ import {
     FileText,
     HelpCircle,
     Mail,
+    Filter,
   } from "lucide-react";
   import { Fragment } from "react";
   import { useNavigate } from "react-router-dom";
@@ -62,6 +63,12 @@ import {
       path: "/admin/contact-queries",
       icon: <Mail />,
     },
+    {
+      id: "filters",
+      label: "Filters",
+      path: "/admin/filters",
+      icon: <Filter />,
+    },    
   ];
   
   function MenuItems({ setOpen }) {

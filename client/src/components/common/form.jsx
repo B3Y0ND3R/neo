@@ -20,7 +20,29 @@ function CommonForm({
 }) {
   function renderInputsByComponentType(getControlItem) {
     let element = null;
-    const value = formData[getControlItem.name] || "";
+    
+    // Handle nested object properties (e.g., "sizes.XS")
+    const getNestedValue = (obj, path) => {
+      return path.split('.').reduce((current, key) => current?.[key], obj);
+    };
+    
+    const setNestedValue = (obj, path, value) => {
+      const keys = path.split('.');
+      const newObj = JSON.parse(JSON.stringify(obj)); // Deep copy to avoid frozen object issues
+      let current = newObj;
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!current[keys[i]]) {
+          current[keys[i]] = {};
+        }
+        current = current[keys[i]];
+      }
+      
+      current[keys[keys.length - 1]] = value;
+      return newObj;
+    };
+    
+    const value = getNestedValue(formData, getControlItem.name) || "";
 
     switch (getControlItem.componentType) {
       case "input":
@@ -31,12 +53,13 @@ function CommonForm({
             id={getControlItem.name}
             type={getControlItem.type}
             value={value}
-            onChange={(event) =>
-              setFormData({
-                ...formData,
-                [getControlItem.name]: event.target.value,
-              })
-            }
+            min={getControlItem.min}
+            onChange={(event) => {
+              const inputValue = getControlItem.type === 'number' 
+                ? Number(event.target.value) || 0 
+                : event.target.value;
+              setFormData(setNestedValue(formData, getControlItem.name, inputValue));
+            }}
           />
         );
 
@@ -45,10 +68,7 @@ function CommonForm({
         element = (
           <Select
             onValueChange={(value) =>
-              setFormData({
-                ...formData,
-                [getControlItem.name]: value,
-              })
+              setFormData(setNestedValue(formData, getControlItem.name, value))
             }
             value={value}
           >
@@ -75,12 +95,12 @@ function CommonForm({
             placeholder={getControlItem.placeholder}
             id={getControlItem.id}
             value={value}
-            onChange={(event) =>
-              setFormData({
-                ...formData,
-                [getControlItem.name]: event.target.value,
-              })
-            }
+            onChange={(event) => {
+              const inputValue = getControlItem.type === 'number' 
+                ? Number(event.target.value) || 0 
+                : event.target.value;
+              setFormData(setNestedValue(formData, getControlItem.name, inputValue));
+            }}
           />
         );
 
@@ -94,12 +114,13 @@ function CommonForm({
             id={getControlItem.name}
             type={getControlItem.type}
             value={value}
-            onChange={(event) =>
-              setFormData({
-                ...formData,
-                [getControlItem.name]: event.target.value,
-              })
-            }
+            min={getControlItem.min}
+            onChange={(event) => {
+              const inputValue = getControlItem.type === 'number' 
+                ? Number(event.target.value) || 0 
+                : event.target.value;
+              setFormData(setNestedValue(formData, getControlItem.name, inputValue));
+            }}
           />
         );
         break;

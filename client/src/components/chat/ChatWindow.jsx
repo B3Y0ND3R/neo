@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import io from 'socket.io-client';
-import { Send, ArrowLeft, MoreVertical, Image, Trash2 } from 'lucide-react';
+import { Send, ArrowLeft, MoreVertical, Image, Trash2, Edit } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +20,8 @@ function ChatWindow({ selectedUserId }) {
   const [loading, setLoading] = useState(true);
   const messageAddedRef = useRef(false);
   const fileInputRef = useRef(null);
+  const [editingMessageId, setEditingMessageId] = useState(null);
+  const [editMessageText, setEditMessageText] = useState('');
 
   console.log('Current user:', user); // Debug user data
   console.log('Selected user ID:', selectedUserId); // Debug selected user
@@ -62,10 +64,22 @@ function ChatWindow({ selectedUserId }) {
       console.log('Joined chat room:', chatRoom);
     }
 
+
+
     socket.on('receive_message', (data) => {
       console.log('Received message:', data);
       if (!messageAddedRef.current || data.sender !== user.id) {
-        setMessages(prev => [...prev, data]);
+        // Ensure the message has all required properties for proper rendering
+        const messageWithDefaults = {
+          _id: data._id || `temp_${Date.now()}`,
+          sender: data.sender,
+          senderRole: data.senderRole,
+          content: data.content,
+          messageType: data.messageType || 'text',
+          timestamp: data.timestamp || new Date(),
+          edited: data.edited || false
+        };
+        setMessages(prev => [...prev, messageWithDefaults]);
       }
       messageAddedRef.current = false;
     });
@@ -75,9 +89,19 @@ function ChatWindow({ selectedUserId }) {
       setMessages(prev => prev.filter(msg => msg._id !== data.messageId));
     });
 
+    socket.on('edit_message', (data) => {
+      console.log('Message edited:', data);
+      setMessages(prev => prev.map(msg => 
+        msg._id === data.messageId 
+          ? { ...msg, content: data.content, edited: true }
+          : msg
+      ));
+    });
+
     return () => {
       socket.off('receive_message');
       socket.off('delete_message');
+      socket.off('edit_message');
       if (chatRoom) {
         socket.emit('leave_chat', chatRoom);
       }
@@ -131,10 +155,19 @@ function ChatWindow({ selectedUserId }) {
       console.log('Message save response:', data);
 
       if (response.ok) {
+        // Get the saved message with proper ID from server response
+        const savedMessage = data.messages[data.messages.length - 1];
         messageAddedRef.current = true;
-        socket.emit('send_message', messageData);
+        
+        // Emit socket event with the saved message data
+        socket.emit('send_message', {
+          ...savedMessage,
+          room: chatId
+        });
+        
         setNewMessage('');
-        setMessages(prev => [...prev, messageData]);
+        // Add the saved message with proper ID to local state
+        setMessages(prev => [...prev, savedMessage]);
       } else {
         console.error('Failed to save message:', data);
       }
@@ -155,43 +188,116 @@ function ChatWindow({ selectedUserId }) {
       );
   
       if (response.ok) {
-        setMessages(messages.filter(msg => msg._id !== messageId));
+        // Emit socket event to notify other users about the deletion
+        socket.emit('delete_message', {
+          messageId: messageId,
+          room: chatId
+        });
+        
+        // Update local state immediately
+        setMessages(prev => prev.filter(msg => msg._id !== messageId));
+      } else {
+        console.error('Failed to delete message:', response.statusText);
       }
     } catch (error) {
       console.error('Error deleting message:', error);
     }
   };
 
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-  
-    const formData = new FormData();
-    formData.append('image', file);
-    formData.append('sender', user.id);
-    formData.append('senderRole', user.role);
-  
+  const handleEditMessage = async (messageId, newContent) => {
     try {
       const chatId = user.role === 'admin' ? selectedUserId : user.id;
       const response = await fetch(
-        `http://localhost:5000/api/chat/${chatId}/messages/image`,
+        `http://localhost:5000/api/chat/${chatId}/messages/${messageId}`,
         {
-          method: 'POST',
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           credentials: 'include',
-          body: formData
+          body: JSON.stringify({ content: newContent })
         }
       );
   
-      const data = await response.json();
       if (response.ok) {
-        const newMessage = data.messages[data.messages.length - 1];
-        messageAddedRef.current = true;
-        socket.emit('send_message', newMessage);
-        setMessages(prev => [...prev, newMessage]);
+        // Emit socket event to notify other users about the edit
+        socket.emit('edit_message', {
+          messageId: messageId,
+          content: newContent,
+          room: chatId
+        });
+        
+        setMessages(prev => prev.map(msg => 
+          msg._id === messageId 
+            ? { ...msg, content: newContent, edited: true }
+            : msg
+        ));
+        
+        setEditingMessageId(null);
+        setEditMessageText('');
       }
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error('Error editing message:', error);
     }
+  };
+
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    // Validate files
+    for (const file of files) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Must be less than 5MB.`);
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        alert(`File ${file.name} is not an image.`);
+        return;
+      }
+    }
+
+    const chatId = user.role === 'admin' ? selectedUserId : user.id;
+
+    // Upload each image
+    for (const file of files) {
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('sender', user.id);
+      formData.append('senderRole', user.role);
+
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/chat/${chatId}/messages/image`,
+          {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+          }
+        );
+
+        const data = await response.json();
+        if (response.ok) {
+          const newMessage = data.messages[data.messages.length - 1];
+          messageAddedRef.current = true;
+          
+          // Add room property for socket event
+          const socketMessage = {
+            ...newMessage,
+            room: chatId
+          };
+          
+          socket.emit('send_message', socketMessage);
+          setMessages(prev => [...prev, newMessage]);
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        alert(`Failed to upload ${file.name}`);
+      }
+    }
+
+    // Clear the file input
+    e.target.value = '';
   };
 
   // Determine if this is the admin view
@@ -269,25 +375,75 @@ function ChatWindow({ selectedUserId }) {
                         alt="Chat image" 
                         className="rounded max-w-full h-auto"
                       />
+                    ) : editingMessageId === msg._id ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editMessageText}
+                          onChange={(e) => setEditMessageText(e.target.value)}
+                          className="w-full p-2 border rounded bg-white text-black"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={() => handleEditMessage(msg._id, editMessageText)}
+                            className="text-xs"
+                          >
+                            Save
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingMessageId(null);
+                              setEditMessageText('');
+                            }}
+                            className="text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
                     ) : (
                       <p className="text-sm">{msg.content}</p>
                     )}
-                    <p className={`text-xs mt-1 ${isCurrentUser ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], {
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </p>
-                    {isCurrentUser && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleDeleteMessage(msg._id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    )}
+                    <div className="flex items-center justify-between mt-1">
+                      <p className={`text-xs ${isCurrentUser ? 'text-primary-foreground/70' : 'text-gray-500'}`}>
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                        {msg.edited && (
+                          <span className="ml-1 italic">(edited)</span>
+                        )}
+                      </p>
+                      {isCurrentUser && msg._id && (
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {msg.messageType === 'text' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                setEditingMessageId(msg._id);
+                                setEditMessageText(msg.content);
+                              }}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleDeleteMessage(msg._id)}
+                          >
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -317,6 +473,7 @@ function ChatWindow({ selectedUserId }) {
               ref={fileInputRef}
               className="hidden"
               accept="image/*"
+              multiple
               onChange={handleImageUpload}
             />
             <Button

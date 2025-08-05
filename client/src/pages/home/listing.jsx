@@ -18,11 +18,12 @@ import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
 import {
   fetchAllFilteredProducts,
   fetchProductDetails,
+  setProductDetails,
 } from "@/store/shop/products-slice";
 import { ArrowUpDownIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 function createSearchParamsHelper(filterParams) {
   const queryParams = [];
@@ -41,12 +42,13 @@ function createSearchParamsHelper(filterParams) {
 }
 
 function HomeListing() {
+  const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { user } = useSelector((state) => state.auth);
   const { productList, productDetails } = useSelector(
     (state) => state.shopProducts
   );
   const { cartItems } = useSelector((state) => state.shopCart);
-  const { user } = useSelector((state) => state.auth);
   const [filters, setFilters] = useState({});
   const [sort, setSort] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,6 +56,31 @@ function HomeListing() {
   const { toast } = useToast();
 
   const categorySearchParam = searchParams.get("category");
+  const genderSearchParam = searchParams.get("gender");
+
+  // Cleanup product details when component mounts to prevent modal from showing
+  useEffect(() => {
+    dispatch(setProductDetails());
+  }, [dispatch]);
+
+  // Initialize filters from URL parameters
+  useEffect(() => {
+    setSort("price-lowtohigh");
+    
+    // Get filters from session storage or initialize from URL params
+    let initialFilters = JSON.parse(sessionStorage.getItem("filters")) || {};
+    
+    // If we have a gender parameter in URL, use it to set the gender filter
+    if (genderSearchParam) {
+      initialFilters = {
+        ...initialFilters,
+        gender: [genderSearchParam]
+      };
+      sessionStorage.setItem("filters", JSON.stringify(initialFilters));
+    }
+    
+    setFilters(initialFilters);
+  }, [categorySearchParam, genderSearchParam]);
 
   function handleSort(value) {
     setSort(value);
@@ -124,11 +151,6 @@ function HomeListing() {
   }
 
   useEffect(() => {
-    setSort("price-lowtohigh");
-    setFilters(JSON.parse(sessionStorage.getItem("filters")) || {});
-  }, [categorySearchParam]);
-
-  useEffect(() => {
     if (filters && Object.keys(filters).length > 0) {
       const createQueryString = createSearchParamsHelper(filters);
       setSearchParams(new URLSearchParams(createQueryString));
@@ -143,16 +165,23 @@ function HomeListing() {
   }, [dispatch, sort, filters]);
 
   useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
+    // Add a small delay to allow cleanup to happen first
+    const timer = setTimeout(() => {
+      if (productDetails !== null) {
+        setOpenDetailsDialog(true);
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
   }, [productDetails]);
 
   console.log(productList, "productListproductListproductList");
 
   return (
     <Layout>
-    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 p-4 md:p-6">
+    <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-6 p-4 md:p-6 min-h-[calc(100vh-200px)]">
       <ProductFilter filters={filters} handleFilter={handleFilter} />
-      <div className="bg-background w-full rounded-lg shadow-sm">
+      <div className="bg-background w-full rounded-lg shadow-sm flex flex-col">
         <div className="p-4 border-b flex items-center justify-between">
           <h2 className="text-lg font-extrabold">All Products</h2>
           <div className="flex items-center gap-3">
@@ -185,7 +214,7 @@ function HomeListing() {
             </DropdownMenu>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 flex-1">
           {productList && productList.length > 0
             ? productList.map((productItem) => (
                 <HomeProductTile
@@ -194,7 +223,11 @@ function HomeListing() {
                   handleAddtoCart={handleAddtoCart}
                 />
               ))
-            : null}
+            : (
+              <div className="col-span-full flex items-center justify-center min-h-[400px]">
+                <p className="text-gray-500 text-lg">No products found</p>
+              </div>
+            )}
         </div>
       </div>
       <HomeProductDetails

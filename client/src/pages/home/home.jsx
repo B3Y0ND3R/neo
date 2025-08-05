@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { fetchAllFilteredProducts, fetchProductDetails } from "@/store/shop/products-slice";
+import { fetchAllFilteredProducts, fetchProductDetails, setProductDetails } from "@/store/shop/products-slice";
 import HomeProductTile from "@/components/home/product-tile";
 import Layout from "@/components/home/layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Airplay, BabyIcon, CloudLightning, Heater,
   Images, Shirt, ShirtIcon, ShoppingBasket,
-  UmbrellaIcon, WashingMachine, WatchIcon,
+  WashingMachine,
 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
@@ -22,8 +22,6 @@ const categoriesWithIcon = [
   { id: "men", label: "Men", icon: ShirtIcon, color: "from-blue-500 to-blue-600" },
   { id: "women", label: "Women", icon: CloudLightning, color: "from-pink-500 to-pink-600" },
   { id: "kids", label: "Kids", icon: BabyIcon, color: "from-purple-500 to-purple-600" },
-  { id: "accessories", label: "Accessories", icon: WatchIcon, color: "from-amber-500 to-amber-600" },
-  { id: "footwear", label: "Footwear", icon: UmbrellaIcon, color: "from-green-500 to-green-600" },
 ];
 
 const brandsWithIcon = [
@@ -45,6 +43,69 @@ function HomePage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+
+  // Cleanup product details when component mounts to prevent modal from showing
+  useEffect(() => {
+    // Set cleanup flag to prevent dialog from opening
+    setIsCleaningUp(true);
+    
+    // Clear any existing product details when component mounts
+    dispatch(setProductDetails());
+    setOpenDetailsDialog(false);
+    
+    // Reset cleanup flag after a delay
+    const timer = setTimeout(() => {
+      setIsCleaningUp(false);
+    }, 500);
+    
+    // Cleanup function to reset product details when component unmounts
+    return () => {
+      clearTimeout(timer);
+      dispatch(setProductDetails());
+      setOpenDetailsDialog(false);
+    };
+  }, [dispatch]);
+
+  // Additional cleanup specifically for home page navigation
+  useEffect(() => {
+    // Force clear product details when on home page
+    const timer = setTimeout(() => {
+      dispatch(setProductDetails());
+      setOpenDetailsDialog(false);
+    }, 50);
+    
+    return () => clearTimeout(timer);
+  }, [dispatch]);
+
+  // Force cleanup when component mounts (for navigation from other pages)
+  useEffect(() => {
+    // Set cleanup flag
+    setIsCleaningUp(true);
+    
+    // Immediate cleanup
+    dispatch(setProductDetails());
+    setOpenDetailsDialog(false);
+    
+    // Additional cleanup with multiple delays to catch any race conditions
+    const timers = [10, 50, 100, 200, 500].map(delay => 
+      setTimeout(() => {
+        dispatch(setProductDetails());
+        setOpenDetailsDialog(false);
+      }, delay)
+    );
+    
+    // Reset cleanup flag after all cleanups
+    const resetTimer = setTimeout(() => {
+      setIsCleaningUp(false);
+    }, 600);
+    
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      clearTimeout(resetTimer);
+    };
+  }, []);
 
   useEffect(() => {
     dispatch(getFeatureImages());
@@ -70,7 +131,8 @@ function HomePage() {
   const handleNavigateToListingPage = (item, type) => {
     let filterParams = {};
     if (type === "category") {
-      filterParams.category = [item.id];
+      // For categories (men, women, kids), use gender parameter
+      filterParams.gender = [item.id];
       setSelectedCategories([item.id]);
     } else if (type === "brand") {
       filterParams.brand = [item.id];
@@ -84,7 +146,7 @@ function HomePage() {
 
     navigate({
       pathname: "/listings",
-      search: `?${type}=${item.id}`,
+      search: type === "category" ? `?gender=${item.id}` : `?${type}=${item.id}`,
     });
   };
 
@@ -133,8 +195,26 @@ function HomePage() {
   };
 
   useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
-  }, [productDetails]);
+    // Don't open dialog if we're in cleanup mode
+    if (isCleaningUp) {
+      setOpenDetailsDialog(false);
+      return;
+    }
+    
+    // Only open dialog if productDetails is not null and has valid data
+    if (productDetails !== null && productDetails._id && productDetails.title) {
+      // Add a small delay to ensure we're not in a cleanup state
+      const timer = setTimeout(() => {
+        if (!isCleaningUp && productDetails !== null && productDetails._id && productDetails.title) {
+          setOpenDetailsDialog(true);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setOpenDetailsDialog(false);
+    }
+  }, [productDetails, isCleaningUp]);
 
   return (
     <Layout>
@@ -171,9 +251,9 @@ function HomePage() {
               <Button 
                 variant="outline"
                 className="px-8 py-6 rounded-full"
-                onClick={() => navigate("/categories")}
+                onClick={() => navigate("/search")}
               >
-                Browse Categories
+                Browse 
               </Button>
             </div>
           </motion.div>
@@ -281,41 +361,43 @@ function HomePage() {
               <div className="w-24 h-1 bg-primary mx-auto rounded-full" />
             </motion.div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
-              {categoriesWithIcon.map((category, index) => (
-                <motion.div
-                  key={category.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <div
-                    onClick={() => handleNavigateToListingPage(category, "category")}
-                    className="group cursor-pointer"
-                  >
-                    <motion.div
-                      whileHover={{ y: -8 }}
-                      className="relative aspect-square rounded-3xl overflow-hidden"
-                    >
-                      <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-90`} />
-                      <div className="relative h-full p-6 flex flex-col items-center justify-center">
-                        <motion.div
+            <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
+  {categoriesWithIcon.map((category, index) => (
+    <motion.div
+      key={category.id}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1 }}
+             className="col-span-1"
+    >
+      <div
+        onClick={() => handleNavigateToListingPage(category, "category")}
+        className="group cursor-pointer"
+      >
+        <motion.div
+          whileHover={{ y: -8 }}
+                     className="relative aspect-square rounded-2xl sm:rounded-3xl overflow-hidden max-w-xs mx-auto"
+        >
+          <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-90`} />
+          <div className="relative h-full p-4 sm:p-6 flex flex-col items-center justify-center">
+                                    <motion.div
                           whileHover={{ rotate: 360 }}
                           transition={{ duration: 0.5 }}
-                          className="mb-4 p-4 bg-white/20 rounded-2xl backdrop-blur-sm"
+                          className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white/20 rounded-lg sm:rounded-xl lg:rounded-2xl backdrop-blur-sm"
                         >
-                          <category.icon className="w-10 h-10 text-white" />
+                          <category.icon className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white" />
                         </motion.div>
-                        <span className="text-xl font-semibold text-white group-hover:scale-110 transition-transform">
+                        <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold text-white group-hover:scale-110 transition-transform text-center">
                           {category.label}
                         </span>
-                      </div>
-                    </motion.div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+          </div>
+        </motion.div>
+      </div>
+    </motion.div>
+  ))}
+</div>
+
           </div>
         </motion.section>
 
@@ -348,8 +430,14 @@ function HomePage() {
                 >
                   <motion.div
                     whileHover={{ scale: 1.05 }}
-                    className="relative p-1 rounded-2xl bg-gradient-to-br from-gray-200 to-white"
-                    onClick={() => handleNavigateToListingPage(brand, "brand")}
+                    className="relative p-1 rounded-2xl bg-gradient-to-br from-gray-200 to-white cursor-pointer"
+                    onClick={user ? () => handleNavigateToListingPage(brand, "brand") : () => {
+                      toast({
+                        title: "Login Required",
+                        description: "Please log in to browse products by brand",
+                        variant: "destructive",
+                      });
+                    }}
                   >
                     <div className="bg-white p-6 rounded-xl cursor-pointer">
                       <div className="aspect-square rounded-xl bg-gray-50 flex items-center justify-center mb-4">

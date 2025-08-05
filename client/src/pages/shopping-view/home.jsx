@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import { fetchAllFilteredProducts, fetchProductDetails } from "@/store/shop/products-slice";
+import { fetchAllFilteredProducts, fetchProductDetails, setProductDetails } from "@/store/shop/products-slice";
 import ShoppingProductTile from "@/components/shopping-view/product-tile";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFeatureImages } from "@/store/common-slice";
@@ -11,18 +11,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Airplay, BabyIcon, CloudLightning, Heater,
   Images, Shirt, ShirtIcon, ShoppingBasket,
-  UmbrellaIcon, WashingMachine, WatchIcon,
+  WashingMachine,
 } from "lucide-react";
 import { addToCart, fetchCartItems } from "@/store/shop/cart-slice";
 import { useToast } from "@/components/ui/use-toast";
 import ProductDetailsDialog from "@/components/shopping-view/product-details";
+import { Sheet } from "@/components/ui/sheet";
+import UserCartWrapper from "@/components/shopping-view/cart-wrapper";
 
 const categoriesWithIcon = [
   { id: "men", label: "Men", icon: ShirtIcon, color: "from-blue-500 to-blue-600" },
   { id: "women", label: "Women", icon: CloudLightning, color: "from-pink-500 to-pink-600" },
   { id: "kids", label: "Kids", icon: BabyIcon, color: "from-purple-500 to-purple-600" },
-  { id: "accessories", label: "Accessories", icon: WatchIcon, color: "from-amber-500 to-amber-600" },
-  { id: "footwear", label: "Footwear", icon: UmbrellaIcon, color: "from-green-500 to-green-600" },
 ];
 
 const brandsWithIcon = [
@@ -41,14 +41,71 @@ function ShoppingHome() {
   const { productList, productDetails } = useSelector((state) => state.shopProducts);
   const { featureImageList } = useSelector((state) => state.commonFeature);
   const { user } = useSelector((state) => state.auth);
+  const { cartItems } = useSelector((state) => state.shopCart);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const [openDetailsDialog, setOpenDetailsDialog] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [openCartSheet, setOpenCartSheet] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    // Set cleanup flag to prevent dialog from opening
+    setIsCleaningUp(true);
+    
+    // Clear any existing product details when component mounts
+    dispatch(setProductDetails());
+    setOpenDetailsDialog(false);
+    
+    // Reset cleanup flag after a delay
+    const timer = setTimeout(() => {
+      setIsCleaningUp(false);
+    }, 500);
+    
+    return () => {
+      clearTimeout(timer);
+      dispatch(setProductDetails());
+      setOpenDetailsDialog(false);
+    };
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(getFeatureImages());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (user?.id) {
+      dispatch(fetchCartItems(user.id));
+    }
+  }, [dispatch, user?.id]);
+
+  // Force cleanup when component mounts (for navigation from other pages)
+  useEffect(() => {
+    // Set cleanup flag
+    setIsCleaningUp(true);
+    
+    // Immediate cleanup
+    dispatch(setProductDetails());
+    setOpenDetailsDialog(false);
+    
+    // Additional cleanup with multiple delays to catch any race conditions
+    const timers = [10, 50, 100, 200, 500].map(delay => 
+      setTimeout(() => {
+        dispatch(setProductDetails());
+        setOpenDetailsDialog(false);
+      }, delay)
+    );
+    
+    // Reset cleanup flag after all cleanups
+    const resetTimer = setTimeout(() => {
+      setIsCleaningUp(false);
+    }, 600);
+    
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+      clearTimeout(resetTimer);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -71,18 +128,34 @@ function ShoppingHome() {
     dispatch(fetchProductDetails(getCurrentProductId));
   };
 
-  const handleAddtoCart = (getCurrentProductId) => {
-    dispatch(
-      addToCart({
+  const handleAddtoCart = (getCurrentProductId, selectedSizes) => {
+    if (!selectedSizes || Object.keys(selectedSizes).length === 0) {
+      toast({ title: "Please select sizes", variant: "destructive" });
+      return;
+    }
+
+    // Add each size to cart
+    const promises = Object.entries(selectedSizes).map(([size, quantity]) => 
+      dispatch(addToCart({
         userId: user?.id,
         productId: getCurrentProductId,
-        quantity: 1,
-      })
-    ).then((data) => {
-      if (data?.payload?.success) {
+        quantity,
+        size,
+      }))
+    );
+
+    Promise.all(promises).then((results) => {
+      const allSuccess = results.every(res => res?.payload?.success);
+      if (allSuccess) {
         dispatch(fetchCartItems(user?.id));
+        // Refresh product list to update stock display
+        dispatch(fetchAllFilteredProducts({
+          filterParams: {},
+          sortParams: "price-lowtohigh",
+        }));
+        const sizeText = Object.entries(selectedSizes).map(([size, qty]) => `${size}(${qty})`).join(', ');
         toast({
-          title: "Product is added to cart",
+          title: `Products added to cart (${sizeText})`,
         });
       }
     });
@@ -91,7 +164,8 @@ function ShoppingHome() {
   const handleNavigateToListingPage = (item, type) => {
     let filterParams = {};
     if (type === "category") {
-      filterParams.category = [item.id];
+      // For categories (men, women, kids), use gender parameter
+      filterParams.gender = [item.id];
       setSelectedCategories([item.id]);
     } else if (type === "brand") {
       filterParams.brand = [item.id];
@@ -105,7 +179,7 @@ function ShoppingHome() {
 
     navigate({
       pathname: "/shop/listing",
-      search: `?${type}=${item.id}`,
+      search: type === "category" ? `?gender=${item.id}` : `?${type}=${item.id}`,
     });
   };
 
@@ -125,8 +199,19 @@ function ShoppingHome() {
   }, [selectedCategories, selectedBrands, dispatch]);
 
   useEffect(() => {
-    if (productDetails !== null) setOpenDetailsDialog(true);
-  }, [productDetails]);
+    // Don't open dialog if we're in cleanup mode
+    if (isCleaningUp) {
+      setOpenDetailsDialog(false);
+      return;
+    }
+    
+    // Only open dialog if productDetails is not null and has valid data
+    if (productDetails !== null && productDetails._id && productDetails.title) {
+      setOpenDetailsDialog(true);
+    } else {
+      setOpenDetailsDialog(false);
+    }
+  }, [productDetails, isCleaningUp]);
 
   return (
     <div className="relative min-h-screen bg-[#fafafa]">
@@ -146,12 +231,14 @@ function ShoppingHome() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.8 }}
         >
-          <h1 className="text-5xl lg:text-7xl font-bold mb-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold mb-6">
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
               Welcome back,
             </span>
             <br />
-            {user?.userName || "Shopper"}!
+            <span className="break-words">
+              {user?.userName || "Shopper"}!
+            </span>
           </h1>
           <p className="text-lg lg:text-xl text-gray-600 mb-8">
             Continue exploring our latest collections curated just for you
@@ -166,7 +253,7 @@ function ShoppingHome() {
             <Button 
               variant="outline"
               className="px-8 py-6 rounded-full"
-              onClick={() => navigate("/shop/cart")}
+              onClick={() => setOpenCartSheet(true)}
             >
               View Cart
             </Button>
@@ -276,37 +363,38 @@ function ShoppingHome() {
             <div className="w-24 h-1 bg-primary mx-auto rounded-full" />
           </motion.div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8">
+                      <div className="grid grid-cols-3 gap-4 sm:gap-6 lg:gap-8 max-w-6xl mx-auto">
             {categoriesWithIcon.map((category, index) => (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
+                              <motion.div
+                  key={category.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  className="col-span-1"
+                >
                 <div
                   onClick={() => handleNavigateToListingPage(category, "category")}
                   className="group cursor-pointer"
                 >
-                  <motion.div
-                    whileHover={{ y: -8 }}
-                    className="relative aspect-square rounded-3xl overflow-hidden"
-                  >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-90`} />
-                    <div className="relative h-full p-6 flex flex-col items-center justify-center">
-                      <motion.div
-                        whileHover={{ rotate: 360 }}
-                        transition={{ duration: 0.5 }}
-                        className="mb-4 p-4 bg-white/20 rounded-2xl backdrop-blur-sm"
-                      >
-                        <category.icon className="w-10 h-10 text-white" />
-                      </motion.div>
-                      <span className="text-xl font-semibold text-white group-hover:scale-110 transition-transform">
-                        {category.label}
-                      </span>
-                    </div>
-                  </motion.div>
+                                      <motion.div
+                      whileHover={{ y: -8 }}
+                      className="relative aspect-square rounded-2xl sm:rounded-3xl overflow-hidden max-w-sm mx-auto"
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-90`} />
+                      <div className="relative h-full p-4 sm:p-6 flex flex-col items-center justify-center">
+                        <motion.div
+                          whileHover={{ rotate: 360 }}
+                          transition={{ duration: 0.5 }}
+                          className="mb-2 sm:mb-3 lg:mb-4 p-2 sm:p-3 lg:p-4 bg-white/20 rounded-lg sm:rounded-xl lg:rounded-2xl backdrop-blur-sm"
+                        >
+                          <category.icon className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-white" />
+                        </motion.div>
+                        <span className="text-sm sm:text-base lg:text-lg xl:text-xl font-semibold text-white group-hover:scale-110 transition-transform text-center">
+                          {category.label}
+                        </span>
+                      </div>
+                    </motion.div>
                 </div>
               </motion.div>
             ))}
@@ -434,6 +522,14 @@ function ShoppingHome() {
         setOpen={setOpenDetailsDialog}
         productDetails={productDetails}
       />
+
+      {/* Cart Sheet */}
+      <Sheet open={openCartSheet} onOpenChange={setOpenCartSheet}>
+        <UserCartWrapper
+          setOpenCartSheet={setOpenCartSheet}
+          cartItems={cartItems?.items?.length > 0 ? cartItems.items : []}
+        />
+      </Sheet>
     </div>
   );
 }

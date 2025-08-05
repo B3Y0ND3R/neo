@@ -1,184 +1,182 @@
 import { useEffect, useState } from 'react';
-import ChatWindow from '@/components/chat/ChatWindow';
 import { Badge } from "@/components/ui/badge";
 import { useSelector } from 'react-redux';
-import { Search, MessageCircle } from 'lucide-react';
+import { Search, MessageCircle, Clock } from 'lucide-react';
 import { Input } from "@/components/ui/input";
-import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const AdminChats = () => {
-  const location = useLocation();
+  const navigate = useNavigate();
   const [conversations, setConversations] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
   const { user } = useSelector((state) => state.auth);
-  const [users, setUsers] = useState([]);
 
   const fetchConversations = async () => {
     try {
-      console.log('Fetching conversations...');
+      setLoading(true);
       const response = await fetch('http://localhost:5000/api/chat/conversations', {
         credentials: 'include'
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
-      console.log('Fetched conversations:', data);
       setConversations(data);
     } catch (error) {
       console.error('Error fetching conversations:', error);
+      setConversations([]);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if (user?.role === 'admin') {
       fetchConversations();
-      const interval = setInterval(fetchConversations, 5000);
-      return () => clearInterval(interval);
     }
-  }, [user]);
+  }, []); // Only run once on mount
 
-  useEffect(() => {
-    if (location.state?.selectedUser) {
-      console.log('Selected user from contact:', location.state.selectedUser);
-      setSelectedUser(location.state.selectedUser);
-      
-      if (location.state.selectedUser.id) {
-        fetchChatHistory(location.state.selectedUser.id);
-      }
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/chat/users', {
-        withCredentials: true
-      });
-      setUsers(response.data);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
-
-  const fetchChatHistory = async (userId) => {
-    try {
-      const response = await axios.get(`http://localhost:5000/api/chat/history/${userId}`, {
-        withCredentials: true
-      });
-      // Handle chat history
-      setChatHistory(response.data);
-    } catch (error) {
-      console.error('Error fetching chat history:', error);
-    }
-  };
-
-  const handleSelectUser = async (userId) => {
-    console.log('Selected user ID:', userId); // Debug log
-    setSelectedUser(userId);
-    try {
-      await fetch(`http://localhost:5000/api/chat/${userId}/read`, {
-        method: 'PUT',
-        credentials: 'include'
-      });
-      fetchConversations();
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
-    }
+  const handleSelectConversation = (userId, userName) => {
+    navigate(`/admin/chat/${userId}`, { 
+      state: { userName, userId } 
+    });
   };
 
   const filteredConversations = conversations.filter(chat => 
     chat.userName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now - date) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (diffInHours < 48) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <span className="ml-2">Loading...</span>
+      </div>
+    );
+  }
+
   if (user?.role !== 'admin') {
     return <div>Access denied. Admin only area.</div>;
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] bg-white rounded-lg shadow-lg overflow-hidden">
-      {/* Sidebar with conversations */}
-      <div className="w-80 border-r flex flex-col bg-gray-50">
-        <div className="p-4 border-b bg-white">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <MessageCircle className="w-5 h-5" />
-            Messages
-          </h2>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              placeholder="Search conversations..."
-              className="pl-9 bg-gray-50"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+    <div className="p-2 space-y-4 max-w-full overflow-hidden">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold">Customer Chats</h1>
+        <p className="text-muted-foreground">Manage customer conversations</p>
+      </div>
+
+      {/* Search and Refresh */}
+      <div className="flex flex-col gap-2">
+        <div className="relative w-full">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Search conversations..."
+            className="pl-9 w-full"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length > 0 ? (
-            filteredConversations.map(chat => (
-              <div
-                key={chat._id}
-                onClick={() => handleSelectUser(chat.user._id || chat.user)}
-                className={`p-4 hover:bg-gray-100 cursor-pointer border-b transition-colors duration-150
-                  ${selectedUser === (chat.user._id || chat.user) ? 'bg-gray-100' : ''}
-                `}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
+        <Button 
+          onClick={fetchConversations}
+          variant="outline"
+          size="sm"
+          className="w-full"
+        >
+          Refresh
+        </Button>
+      </div>
+
+      {/* Conversations List */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5" />
+            Conversations ({filteredConversations.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-2">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <span className="ml-2">Loading conversations...</span>
+            </div>
+          ) : filteredConversations.length > 0 ? (
+            <div className="space-y-3">
+              {filteredConversations.map((chat) => (
+                <div 
+                  key={chat._id}
+                  className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50 transition-colors max-w-full"
+                  onClick={() => handleSelectConversation(chat.user._id || chat.user, chat.userName)}
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold flex-shrink-0">
                     {chat.userName[0].toUpperCase()}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start">
+                  
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="flex items-center justify-between mb-1">
                       <h3 className="font-medium truncate">{chat.userName}</h3>
-                      {chat.messages && chat.messages.length > 0 && (
-                        <span className="text-xs text-gray-500">
-                          {new Date(chat.messages[chat.messages.length - 1].timestamp).toLocaleTimeString([], {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {chat.unreadCount > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {chat.unreadCount} new
+                          </Badge>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {chat.messages && chat.messages.length > 0 
+                            ? formatTime(chat.messages[chat.messages.length - 1].timestamp)
+                            : '-'
+                          }
                         </span>
-                      )}
+                      </div>
                     </div>
-                    {chat.messages && chat.messages.length > 0 && (
-                      <p className="text-sm text-gray-500 truncate">
-                        {chat.messages[chat.messages.length - 1].content}
+                    {chat.messages && chat.messages.length > 0 ? (
+                      <p className="text-sm text-muted-foreground truncate max-w-full">
+                        {chat.messages[chat.messages.length - 1].content.length > 50 
+                          ? chat.messages[chat.messages.length - 1].content.substring(0, 30) + '...'
+                          : chat.messages[chat.messages.length - 1].content
+                        }
                       </p>
-                    )}
-                    {chat.unreadCount > 0 && (
-                      <Badge variant="destructive" className="mt-1">
-                        {chat.unreadCount} new
-                      </Badge>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No messages yet</p>
                     )}
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
-            <div className="p-4 text-center text-gray-500">
-              No conversations found
+            <div className="text-center py-8">
+              <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">No conversations found</h3>
+              <p className="text-sm text-muted-foreground">
+                {searchQuery ? 'Try adjusting your search terms.' : 'Customer messages will appear here when they start conversations.'}
+              </p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Main chat area */}
-      <div className="flex-1 flex">
-        {selectedUser ? (
-          <ChatWindow selectedUserId={selectedUser} />
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <MessageCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p className="text-lg font-medium">Select a conversation</p>
-              <p className="text-sm">Choose a conversation to start messaging</p>
-            </div>
-          </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

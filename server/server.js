@@ -14,6 +14,9 @@ const shopOrderRouter = require("./routes/shop/order-routes");
 const adminOrderRouter = require("./routes/admin/order-routes");
 const shopSearchRouter = require("./routes/shop/search-routes");
 const shopReviewRouter = require("./routes/shop/review-routes");
+const shopVisualSearchRouter = require("./routes/shop/visual-search-routes");
+const shopPdfRouter = require("./routes/shop/pdf-routes");
+
 const commonFeatureRouter = require("./routes/common/feature-routes");
 const chatRouter = require("./routes/chat/chat-routes");
 const http = require('http');
@@ -22,6 +25,7 @@ const adminBrandsRouter = require("./routes/admin/brands-routes");
 const aboutUsRouter = require("./routes/aboutUs");
 const faqRouter = require("./routes/faq");
 const contactRouter = require("./routes/contact");
+const filterRouter = require("./routes/filter-routes");
 
 mongoose.connect('mongodb+srv://ahsanulhasib2:hasib&abid@cluster0.gdn8u.mongodb.net/')
   .then(() => console.log('MongoDB connected'))
@@ -37,6 +41,18 @@ const io = new Server(server, {
     credentials: true
   }
 });
+
+// Function to emit stock updates to admin room
+const emitStockUpdate = (productId, updatedSizes) => {
+  io.to('admin_room').emit('stock_updated', {
+    productId,
+    sizes: updatedSizes
+  });
+};
+
+// Make io available globally for use in controllers
+global.io = io;
+global.emitStockUpdate = emitStockUpdate;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -92,14 +108,52 @@ io.on('connection', (socket) => {
       console.log('Received message data:', data);
       // Emit the message to the specific room
       io.to(data.room).emit('receive_message', {
+        _id: data._id,
         sender: data.sender,
         senderRole: data.senderRole,
         content: data.content,
+        messageType: data.messageType,
         timestamp: data.timestamp
       });
     } catch (error) {
       console.error('Error handling message:', error);
     }
+  });
+
+  socket.on('delete_message', async (data) => {
+    try {
+      console.log('Received delete message data:', data);
+      // Emit the deletion to the specific room
+      io.to(data.room).emit('delete_message', {
+        messageId: data.messageId
+      });
+    } catch (error) {
+      console.error('Error handling delete message:', error);
+    }
+  });
+
+  socket.on('edit_message', async (data) => {
+    try {
+      console.log('Received edit message data:', data);
+      // Emit the edit to the specific room
+      io.to(data.room).emit('edit_message', {
+        messageId: data.messageId,
+        content: data.content
+      });
+    } catch (error) {
+      console.error('Error handling edit message:', error);
+    }
+  });
+
+  // Stock update events
+  socket.on('join_admin_room', () => {
+    socket.join('admin_room');
+    console.log('Admin joined admin room');
+  });
+
+  socket.on('leave_admin_room', () => {
+    socket.leave('admin_room');
+    console.log('Admin left admin room');
   });
 
   socket.on('disconnect', () => {
@@ -120,9 +174,13 @@ app.use("/api/shop/address", shopAddressRouter);
 app.use("/api/shop/order", shopOrderRouter);
 app.use("/api/shop/search", shopSearchRouter);
 app.use("/api/shop/review", shopReviewRouter);
+app.use("/api/shop/visual-search", shopVisualSearchRouter);
+app.use("/api/shop/pdf", shopPdfRouter);
+
 app.use("/api/common/feature", commonFeatureRouter);
 app.use("/api/admin/brands", adminBrandsRouter);
 app.use("/api/about-us", aboutUsRouter);
 app.use("/api/faq", faqRouter);
 app.use("/api/contact", contactRouter);
+app.use("/api", filterRouter);
 server.listen(PORT, () => console.log(`Server is now running on port ${PORT}`));

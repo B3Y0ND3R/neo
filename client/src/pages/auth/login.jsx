@@ -111,6 +111,13 @@ function AuthLogin() {
               </button>
             </div>
 
+            <Link 
+              to="/auth/forgot-password" 
+              className="text-sm text-purple-600 hover:text-purple-500 transition-colors mt-2 inline-block"
+            >
+              Forgot Password?
+            </Link>
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}

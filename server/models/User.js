@@ -38,6 +38,8 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: "user",
   },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date
   // profileImage: String,//may need it later
 });
 

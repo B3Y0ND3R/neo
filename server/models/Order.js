@@ -10,6 +10,7 @@ const OrderSchema = new mongoose.Schema({
       image: String,
       price: String,
       quantity: Number,
+      size: String, // Add size information
     },
   ],
   addressInfo: {
@@ -20,14 +21,29 @@ const OrderSchema = new mongoose.Schema({
     phone: String,
     notes: String,
   },
-  orderStatus: String,
+  orderStatus: {
+    type: String,
+    enum: ["pending", "confirmed", "in_process", "delivered", "cancelled"],
+    default: "pending"
+  },
   paymentMethod: String,
-  paymentStatus: String,
+  paymentStatus: {
+    type: String,
+    enum: ["pending", "paid", "failed", "refunded"],
+    default: "pending"
+  },
   totalAmount: Number,
   orderDate: Date,
   orderUpdateDate: Date,
   paymentId: String,
   payerId: String,
+  refundStatus: {
+    type: String,
+    enum: ["not_requested", "requested", "refunded"],
+    default: "not_requested"
+  },
+          refundDate: Date,
+        refundTransactionId: String,
 });
 
 module.exports = mongoose.model("Order", OrderSchema);

@@ -12,6 +12,7 @@ import shopReviewSlice from "./shop/review-slice";
 //import commonFeatureSlice from "./common-slice";
 import adminBrandsReducer from "./admin/brands-slice";
 import adminReviewReducer from "./admin/review-slice";
+import filterReducer from "./filter-slice";
 
 const store = configureStore({
     reducer : {
@@ -28,6 +29,7 @@ const store = configureStore({
         commonFeature: commonFeatureSlice,
         adminBrands: adminBrandsReducer,
         adminReview: adminReviewReducer,
+        filter: filterReducer,
     },
 });
 

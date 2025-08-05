@@ -2,7 +2,8 @@ import { Card, CardContent, CardFooter } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
 import { useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setProductDetails } from "@/store/shop/products-slice";
 
 function HomeProductTile({
   product,
@@ -10,19 +11,10 @@ function HomeProductTile({
   handleAddtoCart,
 }) {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
 
-  const handleTryOn = (e) => {
-    e.stopPropagation();
-    navigate('/virtual-try-on', { 
-      state: { 
-        garmentImage: product?.image,
-        category: product?.category.toLowerCase(),
-        productId: product?._id,
-        productTitle: product?.title
-      } 
-    });
-  };
+
 
   return (
     <Card className="w-full max-w-sm mx-auto">
@@ -48,7 +40,17 @@ function HomeProductTile({
           ) : null}
         </div>
         <CardContent className="p-4">
-          <h2 className="text-xl font-bold mb-2">{product?.title}</h2>
+          <h2 
+            className="text-xl font-bold mb-2 cursor-pointer hover:text-blue-600 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              // Clear product details to prevent modal from showing when navigating back
+              dispatch(setProductDetails());
+              navigate(`/product/${product?._id}`);
+            }}
+          >
+            {product?.title}
+          </h2>
           <div className="flex justify-between items-center mb-2">
             <span className="text-[16px] text-muted-foreground">
               {product?.category}
@@ -90,13 +92,7 @@ function HomeProductTile({
                 Add to cart
               </Button>
             )}
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={handleTryOn}
-            >
-              Virtual Try On
-            </Button>
+
           </CardFooter>
         )}
       </div>

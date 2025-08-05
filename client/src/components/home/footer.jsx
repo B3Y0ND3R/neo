@@ -143,7 +143,6 @@ const Footer = () => {
             </h3>
             <div className="flex flex-wrap gap-6 items-center">
               <PayPalIcon />
-              <BkashIcon />
             </div>
           </div>
         </div>

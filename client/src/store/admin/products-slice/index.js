@@ -36,18 +36,56 @@ export const fetchAllProducts = createAsyncThunk(
 
 export const editProduct = createAsyncThunk(
   "/products/editProduct",
-  async ({ id, formData }) => {
-    const result = await axios.put(
-      `http://localhost:5000/api/admin/products/edit/${id}`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
+  async ({ id, formData, imageFile, oldImageUrl }) => {
+    // If there's a new image file, use the new endpoint that handles file uploads
+    if (imageFile) {
+      const formDataWithFile = new FormData();
+      
+      // Add the image file
+      formDataWithFile.append('image', imageFile);
+      
+      // Add all other form data
+      Object.keys(formData).forEach(key => {
+        if (key !== 'image') { // Don't add image field since we're uploading file
+          if (key === 'sizes') {
+            // Serialize sizes object to JSON string
+            formDataWithFile.append(key, JSON.stringify(formData[key]));
+          } else {
+            formDataWithFile.append(key, formData[key]);
+          }
+        }
+      });
+      
+      // Add old image URL for deletion
+      if (oldImageUrl) {
+        formDataWithFile.append('oldImageUrl', oldImageUrl);
       }
-    );
-
-    return result?.data;
+      
+      const result = await axios.put(
+        `http://localhost:5000/api/admin/products/edit-with-image/${id}`,
+        formDataWithFile,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      
+      return result?.data;
+    } else {
+      // No new image, use the old endpoint
+      const result = await axios.put(
+        `http://localhost:5000/api/admin/products/edit/${id}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      return result?.data;
+    }
   }
 );
 

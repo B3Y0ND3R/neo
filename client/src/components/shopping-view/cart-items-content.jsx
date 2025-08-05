@@ -1,7 +1,8 @@
 import { Minus, Plus, Trash } from "lucide-react";
 import { Button } from "../ui/button";
 import { useDispatch, useSelector } from "react-redux";
-import { deleteCartItem, updateCartQuantity } from "@/store/shop/cart-slice";
+import { deleteCartItem, updateCartQuantity, fetchCartItems } from "@/store/shop/cart-slice";
+import { fetchAllFilteredProducts } from "@/store/shop/products-slice";
 import { useToast } from "../ui/use-toast";
 
 function UserCartItemsContent({ cartItem }) {
@@ -11,31 +12,46 @@ function UserCartItemsContent({ cartItem }) {
   const dispatch = useDispatch();
   const { toast } = useToast();
 
+  // Debug logging to track cart item data
+  console.log('CartItem received:', cartItem);
+  console.log('CartItem size:', cartItem?.size);
+
   function handleUpdateQuantity(getCartItem, typeOfAction) {
+    // Check if cart item has required properties
+    if (!getCartItem?.size) {
+      console.error('Cart item missing size property:', getCartItem);
+      toast({
+        title: "Error: Cart item data is corrupted. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (typeOfAction == "plus") {
       let getCartItems = cartItems.items || [];
 
       if (getCartItems.length) {
         const indexOfCurrentCartItem = getCartItems.findIndex(
-          (item) => item.productId === getCartItem?.productId
+          (item) => item.productId === getCartItem?.productId && item.size === getCartItem?.size
         );
 
         const getCurrentProductIndex = productList.findIndex(
           (product) => product._id === getCartItem?.productId
         );
-        const getTotalStock = productList[getCurrentProductIndex].totalStock;
+        
+        if (getCurrentProductIndex > -1) {
+          const product = productList[getCurrentProductIndex];
+          const sizeStock = product.sizes?.[getCartItem?.size] || 0;
 
-        console.log(getCurrentProductIndex, getTotalStock, "getTotalStock");
-
-        if (indexOfCurrentCartItem > -1) {
-          const getQuantity = getCartItems[indexOfCurrentCartItem].quantity;
-          if (getQuantity + 1 > getTotalStock) {
-            toast({
-              title: `Only ${getQuantity} quantity can be added for this item`,
-              variant: "destructive",
-            });
-
-            return;
+          if (indexOfCurrentCartItem > -1) {
+            const getQuantity = getCartItems[indexOfCurrentCartItem].quantity;
+            if (getQuantity + 1 > sizeStock) {
+              toast({
+                title: `Only ${sizeStock} quantity available in size ${getCartItem?.size}`,
+                variant: "destructive",
+              });
+              return;
+            }
           }
         }
       }
@@ -49,25 +65,68 @@ function UserCartItemsContent({ cartItem }) {
           typeOfAction === "plus"
             ? getCartItem?.quantity + 1
             : getCartItem?.quantity - 1,
+        size: getCartItem?.size,
       })
     ).then((data) => {
       if (data?.payload?.success) {
+        // Refresh cart items to ensure data integrity
+        dispatch(fetchCartItems(user?.id)).then(() => {
+          // Only refresh product list after cart is refreshed
+          dispatch(fetchAllFilteredProducts({
+            filterParams: {},
+            sortParams: "price-lowtohigh",
+          }));
+        });
         toast({
           title: "Cart item is updated successfully",
         });
       }
+    }).catch((error) => {
+      console.error('Cart update failed:', error);
+      // If update fails, refresh cart to get current state
+      dispatch(fetchCartItems(user?.id));
+      toast({
+        title: "Failed to update cart item",
+        variant: "destructive",
+      });
     });
   }
 
   function handleCartItemDelete(getCartItem) {
+    // Check if cart item has required properties
+    if (!getCartItem?.size) {
+      console.error('Cart item missing size property for deletion:', getCartItem);
+      toast({
+        title: "Error: Cart item data is corrupted. Please refresh the page.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     dispatch(
-      deleteCartItem({ userId: user?.id, productId: getCartItem?.productId })
+      deleteCartItem({ userId: user?.id, productId: getCartItem?.productId, size: getCartItem?.size })
     ).then((data) => {
       if (data?.payload?.success) {
+        // Refresh cart items to ensure data integrity
+        dispatch(fetchCartItems(user?.id)).then(() => {
+          // Only refresh product list after cart is refreshed
+          dispatch(fetchAllFilteredProducts({
+            filterParams: {},
+            sortParams: "price-lowtohigh",
+          }));
+        });
         toast({
           title: "Cart item is deleted successfully",
         });
       }
+    }).catch((error) => {
+      console.error('Cart deletion failed:', error);
+      // If deletion fails, refresh cart to get current state
+      dispatch(fetchCartItems(user?.id));
+      toast({
+        title: "Failed to delete cart item",
+        variant: "destructive",
+      });
     });
   }
 
@@ -80,6 +139,12 @@ function UserCartItemsContent({ cartItem }) {
       />
       <div className="flex-1">
         <h3 className="font-extrabold">{cartItem?.title}</h3>
+        <p className="text-sm text-gray-600">
+          Size: {cartItem?.size || 'Unknown'}
+          {!cartItem?.size && (
+            <span className="text-red-500 ml-2">(Data Error)</span>
+          )}
+        </p>
         <div className="flex items-center gap-2 mt-1">
           <Button
             variant="outline"

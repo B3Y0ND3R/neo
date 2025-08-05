@@ -34,7 +34,8 @@ passport.use(
           id: user._id,
           name: user.userName,
           email: user.email,
-          role: user.role
+          role: user.role,
+          accessToken: accessToken
         });
       } catch (error) {
         return done(error, null);

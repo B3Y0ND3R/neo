@@ -6,8 +6,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { registerUser } from "@/store/auth-slice";
 import { Mail, Lock, User, Eye, EyeOff, Check, X } from 'lucide-react';
 import { Checkbox } from "@/components/ui/checkbox";
-import axios from 'axios';
-import { debounce } from 'lodash';
+
+// Updated: Removed external email validation API - using basic validation only
 
 const initialState = {
   userName: "",
@@ -30,76 +30,13 @@ function AuthRegister() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState({});
-  const [isEmailValid, setIsEmailValid] = useState(true);
-  const [emailVerificationStatus, setEmailVerificationStatus] = useState({
-    isChecking: false,
-    isValid: false,
-    message: '',
-    details: null
-  });
   const [showPasswordRequirements, setShowPasswordRequirements] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Email validation regex
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
 
-  // Debounced email verification function
-  const verifyEmail = debounce(async (email) => {
-    if (!email || !validateEmail(email)) return;
-
-    setEmailVerificationStatus(prev => ({ ...prev, isChecking: true }));
-    try {
-      const response = await axios.get(
-        `https://emailvalidation.abstractapi.com/v1/`,
-        {
-          params: {
-            api_key: '61ab867061f8468cba341cdeb37e4ffa',
-            email: email
-          }
-        }
-      );
-
-      // Check if we got a valid response
-      if (response.data && response.data.deliverability) {
-        setEmailVerificationStatus({
-          isChecking: false,
-          isValid: response.data.deliverability === "DELIVERABLE",
-          message: getEmailValidationMessage(response.data),
-          details: response.data
-        });
-      } else {
-        setEmailVerificationStatus({
-          isChecking: false,
-          isValid: false,
-          message: "Invalid response format",
-          details: null
-        });
-      }
-    } catch (error) {
-      // Handle errors gracefully
-      setEmailVerificationStatus({
-        isChecking: false,
-        isValid: false,
-        message: "Could not verify email at this time",
-        details: null
-      });
-    }
-  }, 800);
-
-  // Helper function to generate validation message
-  const getEmailValidationMessage = (data) => {
-    if (!data.deliverability) return "Invalid email format";
-    if (data.is_disposable_email.value) return "Please use a non-disposable email";
-    if (data.deliverability === "UNDELIVERABLE") return "This email address appears to be invalid";
-    if (data.deliverability === "DELIVERABLE") return "Valid email address";
-    return "Email validation uncertain";
-  };
 
   // Check password requirements
   useEffect(() => {
@@ -113,18 +50,12 @@ function AuthRegister() {
   const handleEmailChange = (e) => {
     const email = e.target.value;
     setFormData({ ...formData, email });
-    setIsEmailValid(validateEmail(email));
-    
-    if (validateEmail(email)) {
-      verifyEmail(email);
-    } else {
-      setEmailVerificationStatus({
-        isChecking: false,
-        isValid: false,
-        message: '',
-        details: null
-      });
-    }
+  };
+
+  // Basic email validation
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
   };
 
   const handlePasswordChange = (e) => {
@@ -142,7 +73,16 @@ function AuthRegister() {
   function onSubmit(event) {
     event.preventDefault();
 
-    if (!isEmailValid || !emailVerificationStatus.isValid) {
+    // Basic validation for required fields
+    if (!formData.userName || !formData.userName.trim()) {
+      toast({
+        title: "Please enter a username",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.email || !validateEmail(formData.email)) {
       toast({
         title: "Please enter a valid email address",
         variant: "destructive",
@@ -255,37 +195,8 @@ function AuthRegister() {
                 placeholder="Email"
                 value={formData.email}
                 onChange={handleEmailChange}
-                className={`w-full pl-10 pr-4 py-2 border ${
-                  emailVerificationStatus.isValid ? 'border-green-500' : 
-                  emailVerificationStatus.message ? 'border-red-500' : 
-                  'border-gray-200'
-                } rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              {formData.email && (
-                <div className="mt-1 text-sm">
-                  {emailVerificationStatus.isChecking ? (
-                    <div className="flex items-center text-gray-500">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full mr-2"
-                      />
-                      Verifying email...
-                    </div>
-                  ) : (
-                    <div className={`flex items-center ${
-                      emailVerificationStatus.isValid ? 'text-green-500' : 'text-red-500'
-                    }`}>
-                      {emailVerificationStatus.isValid ? (
-                        <Check className="h-4 w-4 mr-2" />
-                      ) : (
-                        <X className="h-4 w-4 mr-2" />
-                      )}
-                      {emailVerificationStatus.message}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="relative">

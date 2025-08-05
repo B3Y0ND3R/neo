@@ -113,7 +113,7 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
 
   return (
     <Card>
-      <div className="mb-5 p-3 grid grid-cols-1 sm:grid-cols-2  gap-2">
+      <div className="mb-4 sm:mb-5 p-3 sm:p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {addressList && addressList.length > 0
           ? addressList.map((singleAddressItem) => (
               <AddressCard
@@ -127,11 +127,11 @@ function Address({ setCurrentSelectedAddress, selectedId }) {
           : null}
       </div>
       <CardHeader>
-        <CardTitle>
+        <CardTitle className="text-lg sm:text-xl lg:text-2xl">
           {currentEditedId !== null ? "Edit Address" : "Add New Address"}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 sm:space-y-4">
         <CommonForm
           formControls={addressFormControls}
           formData={formData}
