@@ -326,18 +326,15 @@ neo-up/
   - Order history
   - Order details
 - **User Account**: Comprehensive account management
-  - Profile editing
   - Order history
   - Address management
-  - Account settings
-- **Wishlist**: Product saving functionality
+  - Account 
+
 
 ### **4. Payment System**
 - **PayPal Integration**: Secure payment processing
   - PayPal checkout
   - Payment verification
-  - Transaction logging
-- **Payment Success/Failure Handling**: Comprehensive payment status management
 - **Order Confirmation**: Automated email notifications
 - **Refund Processing**: Automated refund system with email notifications
 
@@ -361,7 +358,7 @@ neo-up/
 - **Dynamic Content**: Admin-editable content throughout the site
 
 ### **7. Image & Media Handling**
-- **Cloudinary Integration**: Cloud-based image storage and processing
+- **Cloudinary Integration**: Cloud-based image storage
   - Automatic image optimization
   - Multiple format support
   - CDN delivery
@@ -369,8 +366,6 @@ neo-up/
   - Product images
   - User profile pictures
   - Review images
-- **Image Processing**: Automatic image optimization and resizing
-- **Media Management**: Organized media storage and retrieval
 
 ### **8. Search & Filtering**
 - **Advanced Search**: Intelligent product search functionality
@@ -412,7 +407,7 @@ neo-up/
 | **Session** | Express Session | Server-side session management |
 | **CORS** | CORS middleware | Cross-origin resource sharing |
 
-## 📊 File Count Summary
+## 📊 Summary
 
 | Directory | Files | Subdirectories | Description |
 |-----------|-------|----------------|-------------|
