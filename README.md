@@ -408,20 +408,17 @@ neo-up/
 | **Storage** | Cloudinary | Cloud media storage and CDN |
 | **Email** | SendInBlue | Transactional email service |
 | **File Upload** | Multer | Multipart form handling |
-| **Image Processing** | Sharp | High-performance image processing |
 | **OAuth** | Google OAuth 2.0 | Social authentication |
 | **Session** | Express Session | Server-side session management |
 | **CORS** | CORS middleware | Cross-origin resource sharing |
-| **Validation** | Joi/Yup | Data validation |
-| **Testing** | Jest + React Testing Library | Testing framework |
 
 ## 📊 File Count Summary
 
 | Directory | Files | Subdirectories | Description |
 |-----------|-------|----------------|-------------|
-| **Client** | 80+ files | 15+ subdirectories | React frontend application |
-| **Server** | 40+ files | 8+ subdirectories | Node.js backend API |
-| **Total** | **140+ files** | **30+ subdirectories** | Complete e-commerce platform |
+| **Client** | React frontend application |
+| **Server** | Node.js backend API |
+
 
 ## 🚀 Getting Started
 
@@ -450,4 +447,4 @@ This project is licensed under the ISC License - see the LICENSE file for detail
 
 ---
 
-**NEO** - Revolutionizing the online shopping experience with AI-powered features and comprehensive e-commerce solutions. 
+**NEO** - Discover new trends, everyday. 
