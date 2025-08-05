@@ -21,10 +21,6 @@ A comprehensive e-commerce platform with AI-powered features, real-time chat sup
 - **Real-time**: Socket.io
 - **Email**: SendInBlue API
 
-### **AI Service (Python + Flask)**
-- **Framework**: Flask
-- **ML Models**: BERT transformers (English, Bangla, Banglish)
-- **Virtual Try-On**: AI-powered clothing fitting
 
 ## 📁 Complete Project Structure
 
